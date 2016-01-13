@@ -3,16 +3,28 @@
 
 #include "Angel.h"
 
-const int NumPoints = 3;
+const int TriangleNumPoints = 3;
+const int QuadrilateralNumPoints = 4;
+const int PentagonNumPoints = 5;
 
 //--------------------------------------------------------------------------
 
 void
 init( void )
 {
-    // Specifiy the vertices for a triangle
-    vec2 vertices[3] = {
-        vec2( -0.75, -0.75 ), vec2( 0.0, 0.75 ), vec2( 0.75, -0.75 )
+    vec2 vertices[ TriangleNumPoints + QuadrilateralNumPoints + PentagonNumPoints ] = {
+      vec2( -0.75, 0.10 ), // Triangle
+      vec2( -0.50, 0.75 ),
+      vec2( -0.25, 0.10 ),
+      vec2( 0.10, 0.10 ),  // Quadrilateral
+      vec2( 0.10, 0.75 ),
+      vec2( 0.50, 0.90 ),
+      vec2( 0.50, 0.25 ),
+      vec2(  0.0,  -0.80), // Pentagon
+      vec2( -0.38, -0.52 ),
+      vec2( -0.24, -0.10 ),
+      vec2(  0.24, -0.10 ),
+      vec2(  0.38, -0.52 )
     };
 
     // Create a vertex array object
@@ -46,7 +58,10 @@ void
 display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT );     // clear the window
-    glDrawArrays( GL_TRIANGLES, 0, NumPoints );    // draw the points
+    glDrawArrays( GL_POLYGON, 0, TriangleNumPoints );
+    glDrawArrays( GL_POLYGON, TriangleNumPoints,  QuadrilateralNumPoints );
+    glDrawArrays( GL_POLYGON, TriangleNumPoints + QuadrilateralNumPoints, PentagonNumPoints );
+
     glFlush();
 }
 
@@ -71,7 +86,7 @@ main( int argc, char **argv )
     glutInitDisplayMode( GLUT_RGBA );
     glutInitWindowSize( 512, 512 );
 
-    glutCreateWindow( "Red Triangle" );
+    glutCreateWindow( "mwa29 - CS537 assignment 1" );
     glewExperimental=GL_TRUE; 
     glewInit();    
     init();
