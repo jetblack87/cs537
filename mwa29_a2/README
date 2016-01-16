@@ -1,0 +1,39 @@
+Class: CS537
+Student: Mark Albrecht (mwa29)
+
+How to compile and run:
+   The Makefile contains the following three targets:
+      - clean: deletes all output files.
+      - build (default): compiles the software
+      - run: launches the application
+
+   To compile and run, execute 'make run'.
+
+
+The program has been modified from the original triangles.cpp to also
+draw a quadrilateral and a pentagon.
+
+The following changes were made to the application:
+
+   # The vertices array was modified to contain vertices for all three
+     shapes:
+    vec2 vertices[ TriangleNumPoints  QuadrilateralNumPoints  PentagonNumPoints ] = {
+      vec2( -0.75, 0.10 ), // Triangle
+      vec2( -0.50, 0.75 ),
+      vec2( -0.25, 0.10 ),
+      vec2( 0.10, 0.10 ),  // Quadrilateral
+      vec2( 0.10, 0.75 ),
+      vec2( 0.50, 0.90 ),
+      vec2( 0.50, 0.25 ),
+      vec2(  0.0,  -0.80), // Pentagon
+      vec2( -0.38, -0.52 ),
+      vec2( -0.24, -0.10 ),
+      vec2(  0.24, -0.10 ),
+      vec2(  0.38, -0.52 )
+
+
+   # The glDrawArrays call was duplicated for each shape:
+    glDrawArrays( GL_POLYGON, 0, TriangleNumPoints );
+    glDrawArrays( GL_POLYGON, TriangleNumPoints,  QuadrilateralNumPoints );
+    glDrawArrays( GL_POLYGON, TriangleNumPoints + QuadrilateralNumPoints, PentagonNumPoints );
+
