@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head>
+	<meta http-equiv="CONTENT-TYPE" content="text/html; charset=iso-8859-1">
+<title>Interactive Computer Graphics - Assignment 2</title>
+	
+	<meta name="GENERATOR" content="OpenOffice.org 1.1.4  (Linux)">
+	<meta name="CREATED" content="20050620;12154300">
+	<meta name="CHANGED" content="20050627;16281300">
+	<style>
+	<!--
+		@page { size: 8.5in 11in; margin-left: 1.25in; margin-right: 1.25in; margin-top: 1in; margin-bottom: 1in }
+		P { margin-bottom: 0.08in }
+	-->
+	</style></head>
+
+<body dir="ltr" lang="en-US">
+<h2>Interactive Computer Graphics - Assignment 2</h2>
+<h3>Drawing 2D Polygons with Color</h3>
+<p style="margin-bottom: 0in;"><br>
+</p>
+<p style="margin-bottom: 0in;">Topics:</p>
+<ul>
+	<li><p style="margin-bottom: 0in;">Define polygon shapes
+	</p>
+</li></ul>
+<ul>
+	<li><p style="margin-bottom: 0in;">Pass attribute data to vertex shader
+	</p>
+</li></ul>
+<ul>
+	<li><p style="margin-bottom: 0in;">Pass color data to fragment shader
+	</p>
+</li></ul>
+<ul>
+	<li><p style="margin-bottom: 0in;">Draw color-interpolated triangles.
+	</p>
+</li></ul>
+<p><br><br>
+</p>
+<p>Part 1:</p>
+<p>Create the following picture:</p>
+<p><img src="a2_files/a2.png" name="Graphic1" align="left" border="0"><br clear="left"><br><br>
+</p>
+<p>
+Use the variables "vPosition" and "vColor" to pass the vertex and
+color information to the vertex shader.
+
+<p>
+The shapes should be drawn as GL_TRIANGLE{S,_FAN,_STRIP}s.
+
+<p><b>The Circle</b>: use the parametric equation of a circle to create multiple vertexes in a polygon.  The parametric equations is:<br>
+y=sin( angle )<br>
+x=cos( angle )<br>
+You will need to increment the angle between 0 and 2*pi to draw the circle.
+You can scale and move the circle by multiplying the coordinates and
+adding offsets to them.<br>
+Vary the red color as a function of angle to get the shading effect.</p>
+<p><b>The Ellipse</b>: For the ellipse, use the same equation but scale the y down to 60% .</p>
+<p><b>The Square</b>: For the square, draw multiple squares ontop of
+each other, varying the color from black to white. Its a good idea to
+base the square off of an angle, making the first point at pi/4, and
+then every pi/2 increment after that (this will help in the next assignment).</p>
+<p><b>The Triangle</b>: Its a good idea to use angle to draw the points here too.
+</p><p>The window should be 500x500 pixels.</p>
+<p>Part 2:</p>
+<p>Write another program that creates another picture with at least
+3 different objects using what you have learned!</p>
+<p>
+You should not use the deprecated OpenGL functions in this or any
+other programming assignment.
+
+<p>
+<hr>
+<p>
+<h3>Grading Scheme</h3>
+   <ol>
+     <li> Basic display function: 2 points
+     <li> Drawing polygons : 3 points
+     <li> Setting colors : 3 points
+     <li> Generating 2nd image : 2 points
+   </ol>
+
+  <hr>
+  <p>
+Last modified April 16, 2015.
+</body></html>

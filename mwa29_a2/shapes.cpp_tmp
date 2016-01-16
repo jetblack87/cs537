@@ -1,0 +1,99 @@
+// First new GL program
+// Just makes a red triangle
+
+#include "Angel.h"
+
+const int TriangleNumPoints = 3;
+const int QuadrilateralNumPoints = 4;
+const int PentagonNumPoints = 5;
+
+//--------------------------------------------------------------------------
+
+void
+init( void )
+{
+    vec2 shapes_vertices[12] = {
+      vec2( -0.75, 0.10 ), // Triangle
+      vec2( -0.50, 0.75 ),
+      vec2( -0.25, 0.10 ),
+      vec2( 0.10, 0.10 ),  // Quadrilateral
+      vec2( 0.10, 0.75 ),
+      vec2( 0.50, 0.90 ),
+      vec2( 0.50, 0.25 ),
+      vec2(  0.0,  -0.80), // Pentagon
+      vec2( -0.38, -0.52 ),
+      vec2( -0.24, -0.10 ),
+      vec2(  0.24, -0.10 ),
+      vec2(  0.38, -0.52 )
+    };
+
+    // Create a vertex array object
+    GLuint vao[1];
+    glGenVertexArrays( 1, vao );
+    glBindVertexArray( vao[0] );
+    
+
+    // Create and initialize a buffer object
+    GLuint buffer;
+    glGenBuffers( 1, &buffer );
+    glBindBuffer( GL_ARRAY_BUFFER, buffer );
+    glBufferData( GL_ARRAY_BUFFER, sizeof(shapes_vertices), shapes_vertices, GL_STATIC_DRAW );
+
+    // Load shaders and use the resulting shader program
+    GLuint program = InitShader( "vshader21.glsl", "fshader21.glsl" );
+    glUseProgram( program );
+
+    // Initialize the vertex position attribute from the vertex shader
+    GLuint loc = glGetAttribLocation( program, "vPosition" );
+    glEnableVertexAttribArray( loc );
+    glVertexAttribPointer( loc, 2, GL_FLOAT, GL_FALSE, 0,
+                           BUFFER_OFFSET(0) );
+
+    glClearColor( 1.0, 1.0, 1.0, 1.0 ); // white background
+}
+
+//----------------------------------------------------------------------------
+
+void
+display( void )
+{
+    glClear( GL_COLOR_BUFFER_BIT );
+    glDrawArrays( GL_POLYGON, 0, TriangleNumPoints );
+    glDrawArrays( GL_POLYGON, TriangleNumPoints,  QuadrilateralNumPoints );
+    glDrawArrays( GL_POLYGON, TriangleNumPoints + QuadrilateralNumPoints, PentagonNumPoints );
+
+    glFlush();
+}
+
+//----------------------------------------------------------------------------
+
+void
+keyboard( unsigned char key, int x, int y )
+{
+    switch ( key ) {
+    case 033:
+        exit( EXIT_SUCCESS );
+        break;
+    }
+}
+
+//----------------------------------------------------------------------------
+
+int
+main( int argc, char **argv )
+{
+    glutInit( &argc, argv );
+    glutInitDisplayMode( GLUT_RGBA );
+    glutInitWindowSize( 512, 512 );
+
+    glutCreateWindow( "mwa29 - CS537 assignment 1" );
+    glewExperimental=GL_TRUE; 
+    glewInit();    
+    init();
+
+    glutDisplayFunc( display );
+    glutKeyboardFunc( keyboard );
+
+    glutMainLoop();
+    return 0;
+}
