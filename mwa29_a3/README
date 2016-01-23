@@ -1,0 +1,20 @@
+Class: CS537
+Student: Mark Albrecht (mwa29)
+
+How to compile and run:
+   The Makefile contains the following three targets:
+      - clean: deletes all output files.
+      - build (default): compiles the software
+      - run: launches the applications (once the first one is closed, the second will open).
+
+   To compile and run, execute 'make run'.
+
+
+This assignment contains two programs: shapes.cpp and shapes_part2.cpp.
+
+shapes.cpp produces the picture shown in the assignment page.
+
+shapes_part2.cpp produces three shapes:
+- red hexagon
+- green octagon
+- blue decagon
