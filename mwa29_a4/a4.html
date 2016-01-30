@@ -1,0 +1,88 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head>
+	<meta http-equiv="CONTENT-TYPE" content="text/html; charset=iso-8859-1">
+<title>Interactive Computer Graphics - Assignment 4</title>
+	
+	<meta name="GENERATOR" content="OpenOffice.org 1.1.4  (Linux)">
+	<meta name="CREATED" content="20050620;12154300">
+	<meta name="CHANGED" content="20050627;17022000">
+	<style>
+	<!--
+		@page { size: 8.5in 11in; margin-left: 1.25in; margin-right: 1.25in; margin-top: 1in; margin-bottom: 1in }
+		P { margin-bottom: 0.08in }
+	-->
+	</style></head>
+
+<body dir="ltr" lang="en-US">
+<h2>Interactive Computer Graphics - Assignment 4</h2>
+<h3>3D Transformations and Geometry in OGL</h3>
+<p style="margin-bottom: 0in;"><br>
+</p>
+<p style="margin-bottom: 0in;">Topics:</p>
+<ul>
+	<li><p style="margin-bottom: 0in;">Defining and drawing 3D objects with color
+	</p>
+	</li><li><p style="margin-bottom: 0in;">Implementing transformations
+	</p>
+	</li><li><p style="margin-bottom: 0in;">Interface for controlling transformations
+	</p>
+</li></ul>
+<p><br><br>
+</p>
+<p>Create an OpenGL program that displays a colored cube.</p>
+<p>The user should also be able to apply transformations (scaling,
+translation and rotation) to the cube.</p>
+<p><br><br>
+</p>
+<ol>
+	<li><p>Cube geometry and color are defined in Lecture 8.</p>
+	</li><li><p>Enable the depth test to ensure proper display.
+	</li><li><p>Create a menu that defines the current
+	transformation being applied to the cube. (SCALE, ROTATE, TRANSLATE)
+	<br> Apply the transformation in the order of scale, rotation, then translation.</p>
+	</li><li><p>Define six keys for increasing and decreasing the
+	X,Y,Z components of the current transformation.<br>
+	The cube should only be transformed with each key stroke.</p>
+	</li><li><p>Define two keys for increasing and decreasing the
+	delta added to the transformations.<br>
+	Each transformation will have its own delta.</p>
+	</li><li><p>Define a key for resetting all of the transformations.</p>
+	</li><li><p>You may decide where to calculate the
+	necessary transformation matrices, in the application or in
+	the vertex shader.</p>
+	</li>
+	<li><p>The transformation matrix should be applied to your
+	vertices in the vertex shader.
+	</p></li>
+	<li><p>Your program should print instructions to the terminal
+	screen describing the functionality of your keyboard inputs.
+	</p>
+</li></ol>
+Note that since you will be using the default orthographic 
+projection, translation in the Z direction should have no
+visible effect on your cube.
+
+<p>
+Your cube should look something like the following.
+<p>
+
+<img src="a4_files/RGB_Colorcube_Corner_White.png" width=400>
+
+<p>
+<hr>
+<p>
+<h3>Grading Scheme</h3>
+<ol>
+ <li>Defining cube geometry and colors: 1 point
+ <li>Correct rotations: 2 point
+ <li>Correct scaling: 2 point
+ <li>Corect translations: 2 point
+ <li>Mouse interaction: 1 point
+ <li>Keyboard interaction: 2 point
+</ol>
+
+<p>
+  <hr>
+  <p>
+  Last modified May 14, 2015.
+</body></html>
