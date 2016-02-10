@@ -50,6 +50,8 @@ const int BOUNDING_BOX_INDEX_NEAR   = 4;
 const int BOUNDING_BOX_INDEX_FAR    = 5;
 const int BOUNDING_BOX_SIZE         = 6;
 
+const color4 DEFAULT_COLOR = color4(1.0, 1.0, 1.0, 1.0);
+
 //--------------------------------------------------------------------------
 //----   GLOBALS      ------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -61,11 +63,8 @@ int w = 600, h = 600;
 double t  = 0;   // the time variable
 double dt = .005; // the delta for time increment
 
-GLint AmbientProduct_loc, DiffuseProduct_loc, SpecularProduct_loc;
 GLint ModelView_loc;
 GLint Projection_loc;
-GLint LightPosition_loc;
-GLint Shininess_loc;
 
 std::vector<vec3>   points;
 std::vector<vec4>   vertices;
@@ -77,15 +76,13 @@ std::vector<color4> colors;
 vec4 diffuse0(1.0, 1.0, 1.0, 1.0);
 vec4 ambient0(1.0, 1.0, 1.0, 1.0);
 vec4 specular0(1.0, 1.0, 1.0, 1.0);
-vec4 light0_pos(1.0, 1.0, 1.0);
+vec4 light0_pos(1.0, 1.0, 1.0, 1.0);
 
 // Light1
 vec4 diffuse1(1.0, 1.0, 1.0, 1.0);
 vec4 ambient1(1.0, 1.0, 1.0, 1.0);
 vec4 specular1(1.0, 1.0, 1.0, 1.0);
-vec4 light1_pos(-1.0, 1.0, 1.0);
-
-float shininess = 100.0;
+vec4 light1_pos(-1.0, 1.0, 1.0, 1.0);
 
 std::string smf_path("models/cube.smf");
 
@@ -141,6 +138,9 @@ parse_smf(std::string file_path, std::vector<vec3> &vertices, std::vector<vec3> 
 std::vector<vec3>
 calculate_normals(std::vector<vec3> vertices, std::vector<vec3> faces)
 {
+  if (DEBUG) {
+    printf("[DEBUG] Calculating normals.\n");
+  }
   // n = (p2 - p0) × (p1 - p0)
   std::vector<vec3> normals(vertices.size(), vec3(0.0,0.0,0.0));
   for (uint i = 0; i < faces.size(); i++) {
@@ -152,7 +152,7 @@ calculate_normals(std::vector<vec3> vertices, std::vector<vec3> faces)
     vec3 p1 = vertices.at(index_two);
     vec3 p2 = vertices.at(index_three);
 
-    vec3 n = (p2 - p0) * (p1 - p0);
+    vec3 n = (p1 - p0) * (p2 - p0);
 
     normals.at(index_one)   += n;
     normals.at(index_two)   += n;
@@ -163,6 +163,9 @@ calculate_normals(std::vector<vec3> vertices, std::vector<vec3> faces)
     normals.at(i) = normalize(normals.at(i));
   }
 
+  if (DEBUG) {
+    printf("[DEBUG] Normals calculated.\n");
+  }
   return normals;
 }
 
@@ -210,6 +213,9 @@ max_double(double one, double two)
 void
 calculate_bounding_box(std::vector<vec3> points)
 {
+  if(DEBUG) {
+    printf("[DEBUG] Calculating bounding box.\n");
+  }
   double min_num = -1.0;
   double max_num = 1.0;
   for (uint i = 0; i < points.size(); i++) {
@@ -230,17 +236,76 @@ calculate_bounding_box(std::vector<vec3> points)
   bounding_box[BOUNDING_BOX_INDEX_FAR]    = max_num;
 
   if (DEBUG) {
+    printf("[DEBUG] Bounding box calculated\n");
     for (int i = 0; i < BOUNDING_BOX_SIZE; i++) {
-      printf("%f\n", bounding_box[i]);
+      printf("[DEBUG] %f\n", bounding_box[i]);
     }
   }
 }
 
-std::vector<color4>
-calculate_phong_shading_model(std::vector<vec3> points, std::vector<vec3> faces, std::vector<vec3> normals)
+void
+calculate_phong_shading_model(std::vector<color4> &colors, std::vector<vec3> points, std::vector<vec3> faces, std::vector<vec3> normals)
 {
-  std::vector<color4> colors(faces.size() * 3, color4(1.0, 0.0, 0.0, 1.0));
-  return colors;
+  if (DEBUG) {
+    printf("[DEBUG] Calculating Phong shading model.\n");
+  }
+
+  for (uint i = 0; i < normals.size(); i++) {
+    vec4 normal(normals.at(i), 1.0);
+
+    // Light0
+    double kd = max_double(dot(normalize(light0_pos), normal), 0.0);
+    vec4 diffuse = kd*diffuse0;
+
+    // Light1
+    kd = max_double(dot(normalize(light1_pos), normal), 0.0);
+    diffuse += kd*diffuse1;
+
+    // Set for all vertices in triangle
+    colors.push_back(DEFAULT_COLOR + diffuse);
+    colors.push_back(DEFAULT_COLOR + diffuse);
+    colors.push_back(DEFAULT_COLOR + diffuse);
+  }
+  if (DEBUG) {
+    printf("[DEBUG] Phong shading model calculated.\n");
+  }
+}
+
+
+// Taken from http://stackoverflow.com/questions/5294955/how-to-scale-down-a-range-of-numbers-with-a-known-min-and-max-value
+double scale(double valueIn, double baseMin, double baseMax, double limitMin, double limitMax) {
+  return ((limitMax - limitMin) * (valueIn - baseMin) / (baseMax - baseMin)) + limitMin;
+}
+
+void
+scale_colors(std::vector<color4> &colors)
+{
+  if (DEBUG) {
+    printf("[DEBUG] Scaling colors.\n");
+  }
+  double max_color = -500.0;
+  double min_color = 500.0;
+  for (uint i = 0; i < colors.size(); i++) {
+    max_color = max_double(max_color, colors.at(i).x);
+    max_color = max_double(max_color, colors.at(i).y);
+    max_color = max_double(max_color, colors.at(i).z);
+    min_color = min_double(min_color, colors.at(i).x);
+    min_color = min_double(min_color, colors.at(i).y);
+    min_color = min_double(min_color, colors.at(i).z);
+  }
+
+  if (DEBUG) {
+    printf("[DEBUG] min_color=%f, max_color=%f\n", min_color, max_color);
+  }
+
+  for (uint i = 0; i < colors.size(); i++) {
+    colors.at(i).x = scale(colors.at(i).x, min_color, max_color, 0, 1.0);
+    colors.at(i).y = scale(colors.at(i).y, min_color, max_color, 0, 1.0);
+    colors.at(i).z = scale(colors.at(i).z, min_color, max_color, 0, 1.0);
+  }
+  if (DEBUG) {
+    printf("[DEBUG] Colors scaled.\n");
+  }
 }
 
 void
@@ -255,31 +320,34 @@ init( void )
 
   calculate_bounding_box(points);
 
-  colors = calculate_phong_shading_model(points, faces, normals);
+  std::vector<color4> colors;
+  calculate_phong_shading_model(colors, points, faces, normals);
+
+  scale_colors(colors);
 
   if (DEBUG) {
     printf("[DEBUG] printing points.\n");
     for(uint i = 0; i < points.size(); i++) {
-      printf("%f, %f, %f\n", points.at(i).x, points.at(i).y, points.at(i).z);
+      printf("[DEBUG] %f, %f, %f\n", points.at(i).x, points.at(i).y, points.at(i).z);
     }
     printf("[DEBUG] printing faces.\n");
     for(uint i = 0; i < faces.size(); i++) {
-      printf("%f, %f, %f\n", faces.at(i).x, faces.at(i).y, faces.at(i).z);
+      printf("[DEBUG] %f, %f, %f\n", faces.at(i).x, faces.at(i).y, faces.at(i).z);
     }
     printf("[DEBUG] printing normals.\n");
     for(uint i = 0; i < normals.size(); i++) {
-      printf("%f, %f, %f\n", normals.at(i).x, normals.at(i).y, normals.at(i).z);
+      printf("[DEBUG] %f, %f, %f\n", normals.at(i).x, normals.at(i).y, normals.at(i).z);
     }
     printf("[DEBUG] printing vertices.\n");
     for(uint i = 0; i < vertices.size(); i++) {
-      printf("%f, %f, %f\n", vertices.at(i).x, vertices.at(i).y, vertices.at(i).z);
+      printf("[DEBUG] %f, %f, %f\n", vertices.at(i).x, vertices.at(i).y, vertices.at(i).z);
       if (2 == i % 3) {
 	printf("\n");
       }
     }
     printf("[DEBUG] printing colors.\n");
     for(uint i = 0; i < colors.size(); i++) {
-      printf("%f, %f, %f\n", colors.at(i).x, colors.at(i).y, colors.at(i).z);
+      printf("[DEBUG] %f, %f, %f\n", colors.at(i).x, colors.at(i).y, colors.at(i).z);
     }
   }
 
@@ -323,7 +391,7 @@ init( void )
 
   Projection_loc = glGetUniformLocation( program, "Projection" );
 
-  glClearColor( 1.0, 1.0, 1.0, 1.0 );
+  glClearColor( 0.75, 0.75, 0.75, 1.0 );
 }
 
 vec4
@@ -474,7 +542,9 @@ main( int argc, char **argv )
   if (argc > 1) {
     smf_path = std::string(argv[1]);
   }
-  printf("%s\n", smf_path.c_str());
+  if (DEBUG) {
+    printf("[DEBUG] Filepath: %s\n", smf_path.c_str());
+  }
 
   printHelp();
 
