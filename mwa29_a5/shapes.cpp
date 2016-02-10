@@ -50,6 +50,9 @@ int mainWindow;
 int menu;
 int w = 600, h = 600;
 
+double t  = 0;   // the time variable
+double dt = .005; // the delta for time increment
+
 GLint AmbientProduct_loc, DiffuseProduct_loc, SpecularProduct_loc;
 GLint ModelView_loc;
 GLint Projection_loc;
@@ -63,13 +66,20 @@ std::vector<vec3>   normals;
 std::vector<color4> colors;
 
 // Light0
-vec4 diffuse0(1.0, 1.0, 1.0, 1.0);
-vec4 ambient0(1.0, 1.0, 1.0, 1.0);
-vec4 specular0(1.0, 1.0, 1.0, 1.0);
-vec4 light0_pos(1.0, 2.0, 3.0);
+vec4 diffuse0(1.0, 0.0, 0.0, 1.0);
+vec4 ambient0(1.0, 0.0, 0.0, 1.0);
+vec4 specular0(1.0, 0.0, 0.0, 1.0);
+vec4 light0_pos(1.0, 1.0, 1.0);
+
+// Light1
+vec4 diffuse1(0.0, 1.0, 0.0, 1.0);
+vec4 ambient1(0.0, 1.0, 0.0, 1.0);
+vec4 specular1(0.0, 1.0, 0.0, 1.0);
+vec4 light1_pos(-1.0, 1.0, 1.0);
+
 float shininess = 100.0;
 
-std::string smf_path("models/icos.smf");
+std::string smf_path("models/cube.smf");
 
 double scale_delta     = DEFAULT_DELTA;
 double rotate_delta    = DEFAULT_DELTA;
@@ -241,6 +251,17 @@ init( void )
   glClearColor( 1.0, 1.0, 1.0, 1.0 );
 }
 
+vec4
+get_eye() {  
+  double angle = t;
+  return vec4(cos(angle),0.0,sin(angle), 1.0);
+}
+
+vec4
+get_up( vec4 eye ) {  
+  return vec4(eye.x, 1.0, eye.z, 1.0);
+}
+
 void
 display( void )
 {
@@ -250,6 +271,13 @@ display( void )
 	 0.0,1.0,0.0,0.0,
 	 0.0,0.0,1.0,0.0,
 	 0.0,0.0,0.0,1.0);
+
+  // LookAt(eye, at, up)
+  vec4 eye = get_eye();
+  m = LookAt(eye,
+	     vec4(0.0,0.0,0.0,1.0),
+	     get_up(eye));
+
 
   m = m*Translate(translate_theta[Xaxis],
 		  translate_theta[Yaxis],
@@ -322,6 +350,13 @@ keyboard( unsigned char key, int x, int y )
 }
 
 void
+myidle ( void )
+{
+  t += dt;
+  glutPostRedisplay();
+}
+
+void
 processMenuEvents(int menuChoice)
 {
   current_transform = menuChoice;
@@ -376,6 +411,7 @@ main( int argc, char **argv )
   setupMenu();
   glutDisplayFunc ( display  );
   glutKeyboardFunc( keyboard );
+  glutIdleFunc    ( myidle );
 
   glEnable(GL_DEPTH_TEST); 
   glutMainLoop();
