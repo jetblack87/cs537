@@ -13,7 +13,7 @@ typedef vec4 color4;
 //----   CONSTANTS    ------------------------------------------------------
 //--------------------------------------------------------------------------
 
-const bool DEBUG = false;
+const bool DEBUG = true;
 
 const char *TITLE = "mwa29 - CS537 assignment 5";
 
@@ -236,6 +236,13 @@ calculate_bounding_box(std::vector<vec3> points)
   }
 }
 
+std::vector<color4>
+calculate_phong_shading_model(std::vector<vec3> points, std::vector<vec3> faces, std::vector<vec3> normals)
+{
+  std::vector<color4> colors(faces.size() * 3, color4(1.0, 0.0, 0.0, 1.0));
+  return colors;
+}
+
 void
 init( void )
 {
@@ -248,7 +255,7 @@ init( void )
 
   calculate_bounding_box(points);
 
-  colors = std::vector<color4>(vertices.size(), color4(1.0,0.0,0.0,1.0));
+  colors = calculate_phong_shading_model(points, faces, normals);
 
   if (DEBUG) {
     printf("[DEBUG] printing points.\n");
@@ -285,13 +292,18 @@ init( void )
   GLuint buffer;
   glGenBuffers( 1, &buffer );
   glBindBuffer( GL_ARRAY_BUFFER, buffer );
-  glBufferData( GL_ARRAY_BUFFER, (vertices.size()*sizeof(vec4)) + (colors.size()*sizeof(color4)),
+  glBufferData( GL_ARRAY_BUFFER,
+		(vertices.size()*sizeof(vec4))
+		+ (colors.size()*sizeof(color4)),
 		NULL, GL_STATIC_DRAW );
 
   //load data separately
-  glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size()*sizeof(vec4), &vertices[0]);
+  glBufferSubData(GL_ARRAY_BUFFER, 0,
+		  vertices.size()*sizeof(vec4),
+		  &vertices[0]);
   glBufferSubData(GL_ARRAY_BUFFER, vertices.size()*sizeof(vec4),
-		  colors.size()*sizeof(color4), &colors[0]);
+		  colors.size()*sizeof(color4),
+		  &colors[0]);
 
   // Load shaders and use the resulting shader program
   GLuint program = InitShader( "vshdrcube.glsl", "fshdrcube.glsl" );
@@ -305,7 +317,7 @@ init( void )
   GLuint vColor_loc = glGetAttribLocation(program, "vColor");
   glEnableVertexAttribArray(vColor_loc);
   glVertexAttribPointer(vColor_loc, 4, GL_FLOAT, GL_FALSE, 0,
-			BUFFER_OFFSET(vertices.size()));
+			BUFFER_OFFSET(vertices.size()*sizeof(vec4)));
 
   ModelView_loc = glGetUniformLocation( program, "matrix" );
 
@@ -365,9 +377,6 @@ display( void )
 
   glUniformMatrix4fv(Projection_loc, 1, GL_TRUE, projection);
 
-  if (DEBUG) {
-    printf("Drawing arrays: %lu\n", vertices.size());
-  }
   glDrawArrays( GL_TRIANGLES, 0, vertices.size() );
 
   glFlush();
