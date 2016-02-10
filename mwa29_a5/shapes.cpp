@@ -13,31 +13,22 @@ typedef vec4 color4;
 //----   CONSTANTS    ------------------------------------------------------
 //--------------------------------------------------------------------------
 
-const bool DEBUG = true;
+const bool DEBUG = false;
 
 const char *TITLE = "mwa29 - CS537 assignment 5";
 
-const int Xaxis = 0;
-const int Yaxis = 1;
-const int Zaxis = 2;
+const char KEY_EYE_UP    = 'q';
+const char KEY_EYE_DOWN  = 'a';
+const char KEY_EYE_CLOSE = 'w';
+const char KEY_EYE_FAR   = 's';
+const char KEY_DELTAUP   = 'e';
+const char KEY_DELTADOWN = 'd';
+const char KEY_STOP      = 'r';
+const char KEY_START     = 'f';
 
-const char KEY_XUP       = 'q';
-const char KEY_XDOWN     = 'a';
-const char KEY_YUP       = 'w';
-const char KEY_YDOWN     = 's';
-const char KEY_ZUP       = 'e';
-const char KEY_ZDOWN     = 'd';
-const char KEY_DELTAUP   = 'r';
-const char KEY_DELTADOWN = 'f';
-const char KEY_RESET     = 't';
+const double DELTA_DELTA = 0.001;
 
-const int TRANSFORM_SCALE     = 0;
-const int TRANSFORM_ROTATE    = 1;
-const int TRANSFORM_TRANSLATE = 2;
-
-const double DELTA_DELTA = 0.01;
-
-const double DEFAULT_DELTA = 0.1;
+const double DEFAULT_DELTA = 0.001;
 
 const char SMF_TYPE_VERTEX = 'v';
 const char SMF_TYPE_FACE   = 'f';
@@ -50,7 +41,12 @@ const int BOUNDING_BOX_INDEX_NEAR   = 4;
 const int BOUNDING_BOX_INDEX_FAR    = 5;
 const int BOUNDING_BOX_SIZE         = 6;
 
-const color4 DEFAULT_COLOR = color4(1.0, 1.0, 1.0, 1.0);
+const color4 DEFAULT_COLOR = color4(0.0, 1.0, 0.0, 1.0);
+
+const int PARALLEL_PROJECTION    = 0;
+const int PERSPECTIVE_PROJECTION = 1;
+
+const double EYE_DELTA = 0.25;
 
 //--------------------------------------------------------------------------
 //----   GLOBALS      ------------------------------------------------------
@@ -61,7 +57,10 @@ int menu;
 int w = 600, h = 600;
 
 double t  = 0;   // the time variable
-double dt = .005; // the delta for time increment
+double dt = DEFAULT_DELTA; // the delta for time increment
+
+double eye_y = 0.0;
+double eye_z = 0.0;
 
 GLint ModelView_loc;
 GLint Projection_loc;
@@ -86,18 +85,9 @@ vec4 light1_pos(-1.0, 1.0, 1.0, 1.0);
 
 std::string smf_path("models/cube.smf");
 
-double scale_delta     = DEFAULT_DELTA;
-double rotate_delta    = DEFAULT_DELTA;
-double translate_delta = DEFAULT_DELTA;
-
-vec3 scale_theta(1.0, 1.0, 1.0);
-vec3 rotate_theta(0.0, 0.0, 0.0);
-vec3 translate_theta(0.0, 0.0, 0.0);
-
-int current_transform = TRANSFORM_TRANSLATE;
-
 double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
+int current_projection = PARALLEL_PROJECTION;
 
 //--------------------------------------------------------------------------
 
@@ -398,7 +388,7 @@ vec4
 get_eye( void )
 {
   double angle = t;
-  return vec4(cos(angle),0.0,sin(angle), 1.0);
+  return vec4(cos(angle),eye_y,eye_z+sin(angle), 1.0);
 }
 
 vec4
@@ -430,16 +420,23 @@ display( void )
 			   get_eye_at(),
 			   get_up(eye));
 
-  //Ortho(left, right, bottom, top, near, far);
-  mat4 projection = Ortho(bounding_box[BOUNDING_BOX_INDEX_LEFT],
-			  bounding_box[BOUNDING_BOX_INDEX_RIGHT],
-			  bounding_box[BOUNDING_BOX_INDEX_BOTTOM],
-			  bounding_box[BOUNDING_BOX_INDEX_TOP],
-			  bounding_box[BOUNDING_BOX_INDEX_NEAR],
-			  bounding_box[BOUNDING_BOX_INDEX_FAR]);
-  //Perspective(fov, aspect, near, far);
-  // projection = Perspective(1.0, 1.0, 0.0, 1.0);
-
+  mat4 projection;
+  if (PARALLEL_PROJECTION == current_projection) {
+    //Ortho(left, right, bottom, top, near, far);
+    projection = Ortho(bounding_box[BOUNDING_BOX_INDEX_LEFT],
+		       bounding_box[BOUNDING_BOX_INDEX_RIGHT],
+		       bounding_box[BOUNDING_BOX_INDEX_BOTTOM],
+		       bounding_box[BOUNDING_BOX_INDEX_TOP],
+		       bounding_box[BOUNDING_BOX_INDEX_NEAR],
+		       bounding_box[BOUNDING_BOX_INDEX_FAR]);
+  } else {
+    projection = Frustum(bounding_box[BOUNDING_BOX_INDEX_LEFT],
+			 bounding_box[BOUNDING_BOX_INDEX_RIGHT],
+			 bounding_box[BOUNDING_BOX_INDEX_BOTTOM],
+			 bounding_box[BOUNDING_BOX_INDEX_TOP],
+			 bounding_box[BOUNDING_BOX_INDEX_NEAR],
+			 bounding_box[BOUNDING_BOX_INDEX_FAR]);
+  }
 
   glUniformMatrix4fv(ModelView_loc, 1, GL_TRUE, model_view);
 
@@ -452,53 +449,6 @@ display( void )
 }
 
 void
-update_theta(int axis, int pos) {
-  switch (current_transform) {
-  case TRANSFORM_SCALE:     scale_theta[axis]     += pos * scale_delta; break;
-  case TRANSFORM_ROTATE:    rotate_theta[axis]    += pos * rotate_delta; break;
-  case TRANSFORM_TRANSLATE: translate_theta[axis] += pos * translate_delta; break;
-  }
-}
-
-void
-reset_theta ( void )
-{
-  scale_theta     = vec3(1.0, 1.0, 1.0);
-  rotate_theta    = vec3(0.0, 0.0, 0.0);
-  translate_theta = vec3(0.0, 0.0, 0.0);
-  scale_delta     = DEFAULT_DELTA;
-  rotate_delta    = DEFAULT_DELTA;
-  translate_delta = DEFAULT_DELTA;
-}
-
-void
-update_delta ( int pos )
-{
-  switch (current_transform) {
-  case TRANSFORM_SCALE:     scale_delta     += pos * DELTA_DELTA; break;
-  case TRANSFORM_ROTATE:    rotate_delta    += pos * DELTA_DELTA; break;
-  case TRANSFORM_TRANSLATE: translate_delta += pos * DELTA_DELTA; break;
-  }
-}
-
-void
-keyboard( unsigned char key, int x, int y )
-{
-  switch (key) {
-  case KEY_XUP:       update_theta(Xaxis,  1); break;
-  case KEY_XDOWN:     update_theta(Xaxis, -1); break;
-  case KEY_YUP:       update_theta(Yaxis,  1); break;
-  case KEY_YDOWN:     update_theta(Yaxis, -1); break;
-  case KEY_ZUP:       update_theta(Zaxis,  1); break;
-  case KEY_ZDOWN:     update_theta(Zaxis, -1); break;
-  case KEY_DELTAUP:   update_delta(1);   break;
-  case KEY_DELTADOWN: update_delta(-1);  break;
-  case KEY_RESET:     reset_theta(); break;
-  }
-  glutPostWindowRedisplay(mainWindow);
-}
-
-void
 myidle ( void )
 {
   t += dt;
@@ -506,18 +456,33 @@ myidle ( void )
 }
 
 void
+keyboard( unsigned char key, int x, int y )
+{
+  switch (key) {
+  case KEY_EYE_UP:    eye_y += EYE_DELTA;   break;
+  case KEY_EYE_DOWN:  eye_y -= EYE_DELTA;   break;
+  case KEY_EYE_CLOSE: eye_z += EYE_DELTA;   break;
+  case KEY_EYE_FAR:   eye_z -= EYE_DELTA;   break;
+  case KEY_DELTAUP:   dt    += DELTA_DELTA; break;
+  case KEY_DELTADOWN: dt    -= DELTA_DELTA; break;
+  case KEY_STOP:      glutIdleFunc(NULL);   break;
+  case KEY_START:     glutIdleFunc(myidle); break;
+  }
+  glutPostWindowRedisplay(mainWindow);
+}
+
+void
 processMenuEvents(int menuChoice)
 {
-  current_transform = menuChoice;
+  current_projection = menuChoice;
 }
 
 void
 setupMenu ( void )
 {
   glutCreateMenu(processMenuEvents);
-  glutAddMenuEntry("Scale",     TRANSFORM_SCALE);
-  glutAddMenuEntry("Rotate",    TRANSFORM_ROTATE);
-  glutAddMenuEntry("Translate", TRANSFORM_TRANSLATE);
+  glutAddMenuEntry("Parallel projection",    PARALLEL_PROJECTION);
+  glutAddMenuEntry("Perspective projection", PERSPECTIVE_PROJECTION);
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
@@ -525,14 +490,14 @@ void
 printHelp ( void ) {
   printf("%s\n", TITLE);
   printf("Keyboard options:\n");
-  printf("q - increase x\n");
-  printf("a - decrease x\n");
-  printf("w - increase y\n");
-  printf("s - decrease y\n");
-  printf("e - increase z\n");
-  printf("d - decrease z\n");
-  printf("r - increase delta of currently selected transform\n");
-  printf("f - decrease delta of currently selected transform\n");
+  printf("q - move eye up\n");
+  printf("a - move eye down\n");
+  printf("w - move eye closer\n");
+  printf("s - move eye farther\n");
+  printf("e - spin eye faster\n");
+  printf("d - spin eye slower\n");
+  printf("r - stop movement\n");
+  printf("f - start movement\n");
   printf("t - reset all transformations and deltas\n");
 }
 
