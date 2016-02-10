@@ -1,5 +1,5 @@
 APP=shapes
-GCC_OPTIONS=-Wall -pedantic -I include
+GCC_OPTIONS=-Wall -Wno-unused-function -pedantic -I include
 GL_OPTIONS=-lGLEW -lGL -lglut
 OPTIONS=$(GCC_OPTIONS) $(GL_OPTIONS)
 
@@ -12,5 +12,5 @@ run: build
 	@./$(APP)
 
 $(APP): 
-	g++ $@.cpp Common/InitShader.o $(OPTIONS) -o $@
+	@g++ $@.cpp Common/InitShader.o $(OPTIONS) -o $@
 
