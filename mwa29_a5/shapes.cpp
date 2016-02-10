@@ -6,9 +6,8 @@
 #include <string>
 #include <vector>
 
-typedef vec4 point4;
-typedef vec4 color4;
 typedef vec3 color3;
+typedef vec4 color4;
 
 //--------------------------------------------------------------------------
 //----   CONSTANTS    ------------------------------------------------------
@@ -16,7 +15,7 @@ typedef vec3 color3;
 
 const bool DEBUG = true;
 
-const char *TITLE = "mwa29 - CS537 assignment 4";
+const char *TITLE = "mwa29 - CS537 assignment 5";
 
 const int Xaxis = 0;
 const int Yaxis = 1;
@@ -58,10 +57,10 @@ GLint LightPosition_loc;
 GLint Shininess_loc;
 
 std::vector<vec3>   points;
-std::vector<vec3>   vertices;
+std::vector<vec4>   vertices;
 std::vector<vec3>   faces;
 std::vector<vec3>   normals;
-std::vector<color3> colors;
+std::vector<color4> colors;
 
 // Light0
 vec4 diffuse0(1.0, 1.0, 1.0, 1.0);
@@ -70,7 +69,18 @@ vec4 specular0(1.0, 1.0, 1.0, 1.0);
 vec4 light0_pos(1.0, 2.0, 3.0);
 float shininess = 100.0;
 
-std::string smf_path("models/box.smf");
+std::string smf_path("models/icos.smf");
+
+double scale_delta     = DEFAULT_DELTA;
+double rotate_delta    = DEFAULT_DELTA;
+double translate_delta = DEFAULT_DELTA;
+
+vec3 scale_theta(1.0, 1.0, 1.0);
+vec3 rotate_theta(0.0, 0.0, 0.0);
+vec3 translate_theta(0.0, 0.0, 0.0);
+
+int current_transform = TRANSFORM_TRANSLATE;
+
 
 //--------------------------------------------------------------------------
 
@@ -136,18 +146,18 @@ calculate_normals(std::vector<vec3> vertices, std::vector<vec3> faces)
   return normals;
 }
 
-std::vector<vec3>
+std::vector<vec4>
 get_vertices(std::vector<vec3> points, std::vector<vec3> faces)
 {
   if (DEBUG) {
     printf("[DEBUG] Getting vertices.\n");
   }
 
-  std::vector<vec3> vertices;
+  std::vector<vec4> vertices;
   for (uint i = 0; i < faces.size(); i++) {
-    vertices.push_back(points.at(faces.at(i).x - 1));
-    vertices.push_back(points.at(faces.at(i).y - 1));
-    vertices.push_back(points.at(faces.at(i).z - 1));
+    vertices.push_back(vec4(points.at(faces.at(i).x - 1), 1.0));
+    vertices.push_back(vec4(points.at(faces.at(i).y - 1), 1.0));
+    vertices.push_back(vec4(points.at(faces.at(i).z - 1), 1.0));
   }
 
   if (DEBUG) {
@@ -160,13 +170,14 @@ get_vertices(std::vector<vec3> points, std::vector<vec3> faces)
 void
 init( void )
 {
+
   parse_smf(smf_path, points, faces);
 
   vertices = get_vertices(points, faces);
 
   normals = calculate_normals(points, faces);
 
-  colors = std::vector<color3>(vertices.size(), color3(1.0,0.0,0.0));
+  colors = std::vector<color4>(vertices.size(), color4(1.0,0.0,0.0,1.0));
   
   if (DEBUG) {
     printf("[DEBUG] printing points.\n");
@@ -184,6 +195,9 @@ init( void )
     printf("[DEBUG] printing vertices.\n");
     for(uint i = 0; i < vertices.size(); i++) {
       printf("%f, %f, %f\n", vertices.at(i).x, vertices.at(i).y, vertices.at(i).z);
+      if (2 == i % 3) {
+	printf("\n");
+      }
     }
     printf("[DEBUG] printing colors.\n");
     for(uint i = 0; i < colors.size(); i++) {
@@ -200,43 +214,29 @@ init( void )
   GLuint buffer;
   glGenBuffers( 1, &buffer );
   glBindBuffer( GL_ARRAY_BUFFER, buffer );
-  glBufferData( GL_ARRAY_BUFFER, vertices.size() + colors.size() + normals.size(),
+  glBufferData( GL_ARRAY_BUFFER, (vertices.size()*sizeof(vec4)) + (colors.size()*sizeof(color4)),
 		NULL, GL_STATIC_DRAW );
 
   //load data separately
-  glBufferSubData(GL_ARRAY_BUFFER, 0,
-		  vertices.size(), &vertices[0]);
-  glBufferSubData(GL_ARRAY_BUFFER, vertices.size(),
-		  colors.size(), &colors[0]);
-  glBufferSubData(GL_ARRAY_BUFFER, vertices.size() + colors.size(),
-		  colors.size(), &normals[0]);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size()*sizeof(vec4), &vertices[0]);
+  glBufferSubData(GL_ARRAY_BUFFER, vertices.size()*sizeof(vec4),
+		  colors.size()*sizeof(color4), &colors[0]);
 
   // Load shaders and use the resulting shader program
-  //GLuint program = InitShader( "vshdrcube.glsl", "fshdrcube.glsl" );
-  GLuint program = InitShader( "vshdrgouraud.glsl", "fshdrgouraud.glsl" );
+  GLuint program = InitShader( "vshdrcube.glsl", "fshdrcube.glsl" );
   glUseProgram( program );
 
   // Initialize the vertex position attribute from the vertex shader
   GLuint vPosition_loc = glGetAttribLocation(program, "vPosition");
   glEnableVertexAttribArray(vPosition_loc);
-  glVertexAttribPointer(vPosition_loc, 3, GL_FLOAT, GL_FALSE, 0,
+  glVertexAttribPointer(vPosition_loc, 4, GL_FLOAT, GL_FALSE, 0,
 			BUFFER_OFFSET(0));
   GLuint vColor_loc = glGetAttribLocation(program, "vColor");
   glEnableVertexAttribArray(vColor_loc);
-  glVertexAttribPointer(vColor_loc, 3, GL_FLOAT, GL_FALSE, 0,
+  glVertexAttribPointer(vColor_loc, 4, GL_FLOAT, GL_FALSE, 0,
 			BUFFER_OFFSET(vertices.size()));
-  GLuint vNormal_loc = glGetAttribLocation(program, "vNormal");
-  glEnableVertexAttribArray(vNormal_loc);
-  glVertexAttribPointer(vNormal_loc, 3, GL_FLOAT, GL_FALSE, 0,
-			BUFFER_OFFSET(vertices.size() + colors.size()));
 
-  AmbientProduct_loc  = glGetUniformLocation( program, "AmbientProduct" );
-  DiffuseProduct_loc  = glGetUniformLocation( program, "DiffuseProduct" );
-  SpecularProduct_loc = glGetUniformLocation( program, "SpecularProduct" );
-  ModelView_loc       = glGetUniformLocation( program, "ModelView" );
-  Projection_loc      = glGetUniformLocation( program, "Projection" );
-  LightPosition_loc   = glGetUniformLocation( program, "LightPosition" );
-  Shininess_loc       = glGetUniformLocation( program, "Shininess" );
+  ModelView_loc = glGetUniformLocation( program, "matrix" );
 
   glClearColor( 1.0, 1.0, 1.0, 1.0 );
 }
@@ -246,53 +246,85 @@ display( void )
 {
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-  // mat4 model_view(1.0,0.0,0.0,0.0,
-  // 		  0.0,1.0,0.0,0.0,
-  // 		  0.0,0.0,1.0,0.0,
-  // 		  0.0,0.0,0.0,1.0);
+  mat4 m(1.0,0.0,0.0,0.0,
+	 0.0,1.0,0.0,0.0,
+	 0.0,0.0,1.0,0.0,
+	 0.0,0.0,0.0,1.0);
 
-  // LookAt(eye, at, up)
-  mat4 model_view = LookAt(vec4(0.0,0.0,-1.0,1.0),
-  			   vec4(0.0,0.0,0.0,1.0),
-  			   vec4(1.0,1.0,1.0,1.0));
+  m = m*Translate(translate_theta[Xaxis],
+		  translate_theta[Yaxis],
+		  translate_theta[Zaxis]);
 
-  //Ortho(left, right, bottom, top, near, far);
-  mat4 projection = Ortho(-1.0, 1.0, -1.0, 1.0, 0.0, 1.0);
-  //Perspective(fov, aspect, near, far);
-  // projection = Perspective(1.0, 1.0, 0.0, 1.0);
+  m = m*RotateX(rotate_theta[Xaxis]);
+  m = m*RotateY(rotate_theta[Yaxis]);
+  m = m*RotateZ(rotate_theta[Zaxis]);
 
-  vec3 diffuse_product  = vec3(diffuse0.x,  diffuse0.y,  diffuse0.z);
-  vec3 ambient_product  = vec3(ambient0.x,  ambient0.y,  ambient0.z);
-  vec3 specular_product = vec3(specular0.x, specular0.y, specular0.z);
+  m = m*Scale(scale_theta[Xaxis],
+	      scale_theta[Yaxis],
+	      scale_theta[Zaxis]);
 
-  glUniform3fv(DiffuseProduct_loc,  1, diffuse_product);
-  glUniform3fv(AmbientProduct_loc,  1, ambient_product);
-  glUniform3fv(SpecularProduct_loc, 1, specular_product);
-
-  glUniformMatrix4fv(ModelView_loc, 1, GL_TRUE, model_view);
-
-  glUniformMatrix4fv(Projection_loc, 1, GL_TRUE, projection);
-
-  glUniform3fv(LightPosition_loc, 1, light0_pos);
-
-  glUniform1f(Shininess_loc, shininess);
-
-  glDrawArrays( GL_TRIANGLES, 0, vertices.size());
-
+  glUniformMatrix4fv(ModelView_loc, 1, GL_TRUE, m); 
+  
+  if (DEBUG) {
+    printf("Drawing arrays: %lu\n", vertices.size());
+  }
+  glDrawArrays( GL_TRIANGLES, 0, vertices.size() );
+  
   glFlush();
   glutSwapBuffers();
 }
 
 void
+update_theta(int axis, int pos) {
+  switch (current_transform) {
+  case TRANSFORM_SCALE:     scale_theta[axis]     += pos * scale_delta; break;
+  case TRANSFORM_ROTATE:    rotate_theta[axis]    += pos * rotate_delta; break;
+  case TRANSFORM_TRANSLATE: translate_theta[axis] += pos * translate_delta; break;
+  }
+}
+
+void
+reset_theta ( void )
+{
+  scale_theta     = vec3(1.0, 1.0, 1.0);
+  rotate_theta    = vec3(0.0, 0.0, 0.0);
+  translate_theta = vec3(0.0, 0.0, 0.0);
+  scale_delta     = DEFAULT_DELTA;
+  rotate_delta    = DEFAULT_DELTA;
+  translate_delta = DEFAULT_DELTA;
+}
+
+void
+update_delta ( int pos )
+{
+  switch (current_transform) {
+  case TRANSFORM_SCALE:     scale_delta     += pos * DELTA_DELTA; break;
+  case TRANSFORM_ROTATE:    rotate_delta    += pos * DELTA_DELTA; break;
+  case TRANSFORM_TRANSLATE: translate_delta += pos * DELTA_DELTA; break;
+  }
+}
+
+void
 keyboard( unsigned char key, int x, int y )
 {
+  switch (key) {
+  case KEY_XUP:       update_theta(Xaxis,  1); break;
+  case KEY_XDOWN:     update_theta(Xaxis, -1); break;
+  case KEY_YUP:       update_theta(Yaxis,  1); break;
+  case KEY_YDOWN:     update_theta(Yaxis, -1); break;
+  case KEY_ZUP:       update_theta(Zaxis,  1); break;
+  case KEY_ZDOWN:     update_theta(Zaxis, -1); break;
+  case KEY_DELTAUP:   update_delta(1);   break;
+  case KEY_DELTADOWN: update_delta(-1);  break;
+  case KEY_RESET:     reset_theta(); break;
+  }
   glutPostWindowRedisplay(mainWindow);
 }
 
 void
 processMenuEvents(int menuChoice)
 {
-
+  current_transform = menuChoice;
 }
 
 void
@@ -303,11 +335,6 @@ setupMenu ( void )
   glutAddMenuEntry("Rotate",    TRANSFORM_ROTATE);
   glutAddMenuEntry("Translate", TRANSFORM_TRANSLATE);
   glutAttachMenu(GLUT_RIGHT_BUTTON);
-}
-
-void
-myidle ( void ) {
-  
 }
 
 void
@@ -333,6 +360,8 @@ main( int argc, char **argv )
   }
   printf("%s\n", smf_path.c_str());
 
+  printHelp();
+
   glutInit( &argc, argv );
   glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
   glutInitWindowPosition(100,100);
@@ -347,11 +376,8 @@ main( int argc, char **argv )
   setupMenu();
   glutDisplayFunc ( display  );
   glutKeyboardFunc( keyboard );
-  glutIdleFunc( myidle );
 
-  printHelp();
-
-  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_DEPTH_TEST); 
   glutMainLoop();
   return 0;
 }
