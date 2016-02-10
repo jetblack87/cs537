@@ -13,7 +13,7 @@ typedef vec4 color4;
 //----   CONSTANTS    ------------------------------------------------------
 //--------------------------------------------------------------------------
 
-const bool DEBUG = true;
+const bool DEBUG = false;
 
 const char *TITLE = "mwa29 - CS537 assignment 5";
 
@@ -42,6 +42,14 @@ const double DEFAULT_DELTA = 0.1;
 const char SMF_TYPE_VERTEX = 'v';
 const char SMF_TYPE_FACE   = 'f';
 
+const int BOUNDING_BOX_INDEX_LEFT   = 0;
+const int BOUNDING_BOX_INDEX_RIGHT  = 1;
+const int BOUNDING_BOX_INDEX_BOTTOM = 2;
+const int BOUNDING_BOX_INDEX_TOP    = 3;
+const int BOUNDING_BOX_INDEX_NEAR   = 4;
+const int BOUNDING_BOX_INDEX_FAR    = 5;
+const int BOUNDING_BOX_SIZE         = 6;
+
 //--------------------------------------------------------------------------
 //----   GLOBALS      ------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -66,15 +74,15 @@ std::vector<vec3>   normals;
 std::vector<color4> colors;
 
 // Light0
-vec4 diffuse0(1.0, 0.0, 0.0, 1.0);
-vec4 ambient0(1.0, 0.0, 0.0, 1.0);
-vec4 specular0(1.0, 0.0, 0.0, 1.0);
+vec4 diffuse0(1.0, 1.0, 1.0, 1.0);
+vec4 ambient0(1.0, 1.0, 1.0, 1.0);
+vec4 specular0(1.0, 1.0, 1.0, 1.0);
 vec4 light0_pos(1.0, 1.0, 1.0);
 
 // Light1
-vec4 diffuse1(0.0, 1.0, 0.0, 1.0);
-vec4 ambient1(0.0, 1.0, 0.0, 1.0);
-vec4 specular1(0.0, 1.0, 0.0, 1.0);
+vec4 diffuse1(1.0, 1.0, 1.0, 1.0);
+vec4 ambient1(1.0, 1.0, 1.0, 1.0);
+vec4 specular1(1.0, 1.0, 1.0, 1.0);
 vec4 light1_pos(-1.0, 1.0, 1.0);
 
 float shininess = 100.0;
@@ -90,6 +98,8 @@ vec3 rotate_theta(0.0, 0.0, 0.0);
 vec3 translate_theta(0.0, 0.0, 0.0);
 
 int current_transform = TRANSFORM_TRANSLATE;
+
+double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
 
 //--------------------------------------------------------------------------
@@ -177,6 +187,55 @@ get_vertices(std::vector<vec3> points, std::vector<vec3> faces)
   return vertices;
 }
 
+double
+min_double(double one, double two)
+{
+  if (one < two) {
+    return one;
+  } else {
+    return two;
+  }
+}
+
+double
+max_double(double one, double two)
+{
+  if (one > two) {
+    return one;
+  } else {
+    return two;
+  }
+}
+
+void
+calculate_bounding_box(std::vector<vec3> points)
+{
+  double min_num = -1.0;
+  double max_num = 1.0;
+  for (uint i = 0; i < points.size(); i++) {
+    vec3 p = points.at(i);
+    min_num = min_double(p.x, min_num);
+    max_num = max_double(p.x, max_num);
+    min_num = min_double(p.y, min_num);
+    max_num = max_double(p.y, max_num);
+    min_num = min_double(p.z, min_num);
+    max_num = max_double(p.z, max_num);
+  }
+
+  bounding_box[BOUNDING_BOX_INDEX_LEFT]   = min_num;
+  bounding_box[BOUNDING_BOX_INDEX_RIGHT]  = max_num;
+  bounding_box[BOUNDING_BOX_INDEX_BOTTOM] = min_num;
+  bounding_box[BOUNDING_BOX_INDEX_TOP]    = max_num;
+  bounding_box[BOUNDING_BOX_INDEX_NEAR]   = min_num;
+  bounding_box[BOUNDING_BOX_INDEX_FAR]    = max_num;
+
+  if (DEBUG) {
+    for (int i = 0; i < BOUNDING_BOX_SIZE; i++) {
+      printf("%f\n", bounding_box[i]);
+    }
+  }
+}
+
 void
 init( void )
 {
@@ -187,8 +246,10 @@ init( void )
 
   normals = calculate_normals(points, faces);
 
+  calculate_bounding_box(points);
+
   colors = std::vector<color4>(vertices.size(), color4(1.0,0.0,0.0,1.0));
-  
+
   if (DEBUG) {
     printf("[DEBUG] printing points.\n");
     for(uint i = 0; i < points.size(); i++) {
@@ -248,17 +309,33 @@ init( void )
 
   ModelView_loc = glGetUniformLocation( program, "matrix" );
 
+  Projection_loc = glGetUniformLocation( program, "Projection" );
+
   glClearColor( 1.0, 1.0, 1.0, 1.0 );
 }
 
 vec4
-get_eye() {  
+get_eye( void )
+{
   double angle = t;
   return vec4(cos(angle),0.0,sin(angle), 1.0);
 }
 
 vec4
-get_up( vec4 eye ) {  
+get_eye_at( void )
+{
+  return vec4((bounding_box[BOUNDING_BOX_INDEX_LEFT]
+	       + bounding_box[BOUNDING_BOX_INDEX_RIGHT]) / 2,
+	      (bounding_box[BOUNDING_BOX_INDEX_BOTTOM]
+	       + bounding_box[BOUNDING_BOX_INDEX_TOP]) / 2,
+	      (bounding_box[BOUNDING_BOX_INDEX_NEAR]
+	       + bounding_box[BOUNDING_BOX_INDEX_FAR]) / 2,
+	      1.0);
+}
+
+vec4
+get_up( vec4 eye )
+{
   return vec4(eye.x, 1.0, eye.z, 1.0);
 }
 
@@ -267,37 +344,32 @@ display( void )
 {
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-  mat4 m(1.0,0.0,0.0,0.0,
-	 0.0,1.0,0.0,0.0,
-	 0.0,0.0,1.0,0.0,
-	 0.0,0.0,0.0,1.0);
-
   // LookAt(eye, at, up)
   vec4 eye = get_eye();
-  m = LookAt(eye,
-	     vec4(0.0,0.0,0.0,1.0),
-	     get_up(eye));
+  mat4 model_view = LookAt(eye,
+			   get_eye_at(),
+			   get_up(eye));
+
+  //Ortho(left, right, bottom, top, near, far);
+  mat4 projection = Ortho(bounding_box[BOUNDING_BOX_INDEX_LEFT],
+			  bounding_box[BOUNDING_BOX_INDEX_RIGHT],
+			  bounding_box[BOUNDING_BOX_INDEX_BOTTOM],
+			  bounding_box[BOUNDING_BOX_INDEX_TOP],
+			  bounding_box[BOUNDING_BOX_INDEX_NEAR],
+			  bounding_box[BOUNDING_BOX_INDEX_FAR]);
+  //Perspective(fov, aspect, near, far);
+  // projection = Perspective(1.0, 1.0, 0.0, 1.0);
 
 
-  m = m*Translate(translate_theta[Xaxis],
-		  translate_theta[Yaxis],
-		  translate_theta[Zaxis]);
+  glUniformMatrix4fv(ModelView_loc, 1, GL_TRUE, model_view);
 
-  m = m*RotateX(rotate_theta[Xaxis]);
-  m = m*RotateY(rotate_theta[Yaxis]);
-  m = m*RotateZ(rotate_theta[Zaxis]);
+  glUniformMatrix4fv(Projection_loc, 1, GL_TRUE, projection);
 
-  m = m*Scale(scale_theta[Xaxis],
-	      scale_theta[Yaxis],
-	      scale_theta[Zaxis]);
-
-  glUniformMatrix4fv(ModelView_loc, 1, GL_TRUE, m); 
-  
   if (DEBUG) {
     printf("Drawing arrays: %lu\n", vertices.size());
   }
   glDrawArrays( GL_TRIANGLES, 0, vertices.size() );
-  
+
   glFlush();
   glutSwapBuffers();
 }
@@ -413,7 +485,7 @@ main( int argc, char **argv )
   glutKeyboardFunc( keyboard );
   glutIdleFunc    ( myidle );
 
-  glEnable(GL_DEPTH_TEST); 
+  glEnable(GL_DEPTH_TEST);
   glutMainLoop();
   return 0;
 }
