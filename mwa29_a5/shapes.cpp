@@ -41,7 +41,7 @@ const int BOUNDING_BOX_INDEX_NEAR   = 4;
 const int BOUNDING_BOX_INDEX_FAR    = 5;
 const int BOUNDING_BOX_SIZE         = 6;
 
-const color4 DEFAULT_COLOR = color4(1.0, 1.0, 1.0, 1.0);
+const color4 DEFAULT_COLOR = color4(0.0, 1.0, 0.0, 1.0);
 
 const int PARALLEL_PROJECTION    = 0;
 const int PERSPECTIVE_PROJECTION = 1;
@@ -82,7 +82,7 @@ vec4 ambient1(1.0, 1.0, 1.0, 1.0);
 vec4 specular1(1.0, 1.0, 1.0, 1.0);
 vec4 light1_pos(-1.0, 1.0, 0.0, 1.0);
 
-std::string smf_path("models/frog.smf");
+std::string smf_path("models/lo-sphere.smf");
 
 double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
@@ -213,7 +213,7 @@ calculate_phong_shading_model(std::vector<color4> &colors, std::vector<vec3> poi
     vec3 p1 = points.at(index_two);
     vec3 p2 = points.at(index_three);
 
-    vec3 n = (p1 - p0) * (p2 - p0);
+    vec3 n = normalize((p1 - p0) * (p2 - p0));
 
     color4 diffuse = diffuse0 * max_double(dot(n, normalize(light0_pos)),0.0);
     diffuse += diffuse1 * max_double(dot(n, normalize(light1_pos)),0.0);
