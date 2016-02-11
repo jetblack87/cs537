@@ -13,7 +13,7 @@ typedef vec4 color4;
 //----   CONSTANTS    ------------------------------------------------------
 //--------------------------------------------------------------------------
 
-const bool DEBUG = false;
+const bool DEBUG = true;
 
 const char *TITLE = "mwa29 - CS537 assignment 5";
 
@@ -41,7 +41,7 @@ const int BOUNDING_BOX_INDEX_NEAR   = 4;
 const int BOUNDING_BOX_INDEX_FAR    = 5;
 const int BOUNDING_BOX_SIZE         = 6;
 
-const color4 DEFAULT_COLOR = color4(0.0, 1.0, 0.0, 1.0);
+const color4 DEFAULT_COLOR = color4(1.0, 1.0, 1.0, 1.0);
 
 const int PARALLEL_PROJECTION    = 0;
 const int PERSPECTIVE_PROJECTION = 1;
@@ -68,22 +68,21 @@ GLint Projection_loc;
 std::vector<vec3>   points;
 std::vector<vec4>   vertices;
 std::vector<vec3>   faces;
-std::vector<vec3>   normals;
 std::vector<color4> colors;
 
 // Light0
 vec4 diffuse0(1.0, 1.0, 1.0, 1.0);
 vec4 ambient0(1.0, 1.0, 1.0, 1.0);
 vec4 specular0(1.0, 1.0, 1.0, 1.0);
-vec4 light0_pos(1.0, 1.0, 1.0, 1.0);
+vec4 light0_pos(1.0, 01.0, 0.0, 1.0);
 
 // Light1
 vec4 diffuse1(1.0, 1.0, 1.0, 1.0);
 vec4 ambient1(1.0, 1.0, 1.0, 1.0);
 vec4 specular1(1.0, 1.0, 1.0, 1.0);
-vec4 light1_pos(-1.0, 1.0, 1.0, 1.0);
+vec4 light1_pos(-1.0, 1.0, 0.0, 1.0);
 
-std::string smf_path("models/cube.smf");
+std::string smf_path("models/frog.smf");
 
 double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
@@ -123,40 +122,6 @@ parse_smf(std::string file_path, std::vector<vec3> &vertices, std::vector<vec3> 
   if (DEBUG) {
     printf("[DEBUG] Parse complete.\n");
   }
-}
-
-std::vector<vec3>
-calculate_normals(std::vector<vec3> vertices, std::vector<vec3> faces)
-{
-  if (DEBUG) {
-    printf("[DEBUG] Calculating normals.\n");
-  }
-  // n = (p2 - p0) × (p1 - p0)
-  std::vector<vec3> normals(vertices.size(), vec3(0.0,0.0,0.0));
-  for (uint i = 0; i < faces.size(); i++) {
-    GLint index_one   = faces.at(i).x - 1;
-    GLint index_two   = faces.at(i).y - 1;
-    GLint index_three = faces.at(i).z - 1;
-
-    vec3 p0 = vertices.at(index_one);
-    vec3 p1 = vertices.at(index_two);
-    vec3 p2 = vertices.at(index_three);
-
-    vec3 n = (p1 - p0) * (p2 - p0);
-
-    normals.at(index_one)   += n;
-    normals.at(index_two)   += n;
-    normals.at(index_three) += n;
-  }
-
-  for (uint i = 0; i < normals.size(); i++) {
-    normals.at(i) = normalize(normals.at(i));
-  }
-
-  if (DEBUG) {
-    printf("[DEBUG] Normals calculated.\n");
-  }
-  return normals;
 }
 
 std::vector<vec4>
@@ -206,8 +171,8 @@ calculate_bounding_box(std::vector<vec3> points)
   if(DEBUG) {
     printf("[DEBUG] Calculating bounding box.\n");
   }
-  double min_num = -1.0;
-  double max_num = 1.0;
+  double min_num = 5000.0;
+  double max_num = -5000.0;
   for (uint i = 0; i < points.size(); i++) {
     vec3 p = points.at(i);
     min_num = min_double(p.x, min_num);
@@ -217,7 +182,7 @@ calculate_bounding_box(std::vector<vec3> points)
     min_num = min_double(p.z, min_num);
     max_num = max_double(p.z, max_num);
   }
-
+  
   bounding_box[BOUNDING_BOX_INDEX_LEFT]   = min_num;
   bounding_box[BOUNDING_BOX_INDEX_RIGHT]  = max_num;
   bounding_box[BOUNDING_BOX_INDEX_BOTTOM] = min_num;
@@ -234,28 +199,33 @@ calculate_bounding_box(std::vector<vec3> points)
 }
 
 void
-calculate_phong_shading_model(std::vector<color4> &colors, std::vector<vec3> points, std::vector<vec3> faces, std::vector<vec3> normals)
+calculate_phong_shading_model(std::vector<color4> &colors, std::vector<vec3> points, std::vector<vec3> faces)
 {
   if (DEBUG) {
     printf("[DEBUG] Calculating Phong shading model.\n");
   }
 
-  for (uint i = 0; i < normals.size(); i++) {
-    vec4 normal(normals.at(i), 1.0);
+  for (uint i = 0; i < faces.size(); i++) {
+    GLint index_one   = faces.at(i).x - 1;
+    GLint index_two   = faces.at(i).y - 1;
+    GLint index_three = faces.at(i).z - 1;
+    vec3 p0 = points.at(index_one);
+    vec3 p1 = points.at(index_two);
+    vec3 p2 = points.at(index_three);
 
-    // Light0
-    double kd = max_double(dot(normalize(light0_pos), normal), 0.0);
-    vec4 diffuse = kd*diffuse0;
+    vec3 n = (p1 - p0) * (p2 - p0);
 
-    // Light1
-    kd = max_double(dot(normalize(light1_pos), normal), 0.0);
-    diffuse += kd*diffuse1;
+    color4 diffuse = diffuse0 * max_double(dot(n, normalize(light0_pos)),0.0);
+    diffuse += diffuse1 * max_double(dot(n, normalize(light1_pos)),0.0);
 
-    // Set for all vertices in triangle
-    colors.push_back(DEFAULT_COLOR + diffuse);
-    colors.push_back(DEFAULT_COLOR + diffuse);
-    colors.push_back(DEFAULT_COLOR + diffuse);
+    if (DEBUG) {
+      printf("[DEBUG] diffuse %f, %f, %f\n", diffuse.x, diffuse.y, diffuse.z);
+    }
+    colors.push_back(DEFAULT_COLOR * diffuse);
+    colors.push_back(DEFAULT_COLOR * diffuse);
+    colors.push_back(DEFAULT_COLOR * diffuse);    
   }
+
   if (DEBUG) {
     printf("[DEBUG] Phong shading model calculated.\n");
   }
@@ -275,6 +245,12 @@ scale_colors(std::vector<color4> &colors)
   }
   double max_color = -500.0;
   double min_color = 500.0;
+  if (DEBUG) {
+    printf("[DEBUG] printing colors.\n");
+    for(uint i = 0; i < colors.size(); i++) {
+      printf("[DEBUG] %f, %f, %f\n", colors.at(i).x, colors.at(i).y, colors.at(i).z);
+    }
+  }
   for (uint i = 0; i < colors.size(); i++) {
     max_color = max_double(max_color, colors.at(i).x);
     max_color = max_double(max_color, colors.at(i).y);
@@ -306,12 +282,10 @@ init( void )
 
   vertices = get_vertices(points, faces);
 
-  normals = calculate_normals(points, faces);
-
   calculate_bounding_box(points);
 
   std::vector<color4> colors;
-  calculate_phong_shading_model(colors, points, faces, normals);
+  calculate_phong_shading_model(colors, points, faces);
 
   scale_colors(colors);
 
@@ -323,10 +297,6 @@ init( void )
     printf("[DEBUG] printing faces.\n");
     for(uint i = 0; i < faces.size(); i++) {
       printf("[DEBUG] %f, %f, %f\n", faces.at(i).x, faces.at(i).y, faces.at(i).z);
-    }
-    printf("[DEBUG] printing normals.\n");
-    for(uint i = 0; i < normals.size(); i++) {
-      printf("[DEBUG] %f, %f, %f\n", normals.at(i).x, normals.at(i).y, normals.at(i).z);
     }
     printf("[DEBUG] printing vertices.\n");
     for(uint i = 0; i < vertices.size(); i++) {
@@ -388,19 +358,22 @@ vec4
 get_eye( void )
 {
   double angle = t;
-  return vec4(cos(angle),eye_y,eye_z+sin(angle), 1.0);
+  return vec4(cos(angle),
+  	      eye_y,
+  	      eye_z+sin(angle),
+  	      1.0);
 }
 
 vec4
 get_eye_at( void )
 {
   return vec4((bounding_box[BOUNDING_BOX_INDEX_LEFT]
-	       + bounding_box[BOUNDING_BOX_INDEX_RIGHT]) / 2,
-	      (bounding_box[BOUNDING_BOX_INDEX_BOTTOM]
-	       + bounding_box[BOUNDING_BOX_INDEX_TOP]) / 2,
-	      (bounding_box[BOUNDING_BOX_INDEX_NEAR]
-	       + bounding_box[BOUNDING_BOX_INDEX_FAR]) / 2,
-	      1.0);
+  	       + bounding_box[BOUNDING_BOX_INDEX_RIGHT]) / 2,
+  	      (bounding_box[BOUNDING_BOX_INDEX_BOTTOM]
+  	       + bounding_box[BOUNDING_BOX_INDEX_TOP]) / 2,
+  	      (bounding_box[BOUNDING_BOX_INDEX_NEAR]
+  	       + bounding_box[BOUNDING_BOX_INDEX_FAR]) / 2,
+  	      1.0);
 }
 
 vec4
@@ -415,10 +388,10 @@ display( void )
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
   // LookAt(eye, at, up)
-  vec4 eye = get_eye();
-  mat4 model_view = LookAt(eye,
-			   get_eye_at(),
-			   get_up(eye));
+  vec4 eye    = get_eye();
+  vec4 eye_at = get_eye_at();
+  vec4 eye_up = get_up(eye);
+  mat4 model_view = LookAt(eye, eye_at, eye_up);
 
   mat4 projection;
   if (PARALLEL_PROJECTION == current_projection) {
@@ -518,7 +491,7 @@ main( int argc, char **argv )
   glutInitWindowPosition(100,100);
   glutInitWindowSize( w, h );
 
-  mainWindow = glutCreateWindow( TITLE );
+  mainWindow = glutCreateWindow( (std::string(TITLE) + " " + smf_path).c_str() );
 
   glewExperimental=GL_TRUE;
   glewInit();
