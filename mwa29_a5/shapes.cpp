@@ -13,9 +13,9 @@ typedef vec4 color4;
 //----   CONSTANTS    ------------------------------------------------------
 //--------------------------------------------------------------------------
 
-const bool DEBUG = true;
-
 const char *TITLE = "mwa29 - CS537 assignment 5";
+
+const int  DEBUG_MAX_FACES = 1500;
 
 const char KEY_EYE_UP    = 'q';
 const char KEY_EYE_DOWN  = 'a';
@@ -28,7 +28,7 @@ const char KEY_START     = 'f';
 
 const double DELTA_DELTA = 0.001;
 
-const double DEFAULT_DELTA = 0.001;
+const double DEFAULT_DELTA = 0.1;
 
 const char SMF_TYPE_VERTEX = 'v';
 const char SMF_TYPE_FACE   = 'f';
@@ -51,6 +51,8 @@ const double EYE_DELTA = 0.25;
 //--------------------------------------------------------------------------
 //----   GLOBALS      ------------------------------------------------------
 //--------------------------------------------------------------------------
+
+bool debug = true;
 
 int mainWindow;
 int menu;
@@ -82,7 +84,7 @@ vec4 ambient1(1.0, 1.0, 1.0, 1.0);
 vec4 specular1(1.0, 1.0, 1.0, 1.0);
 vec4 light1_pos(-1.0, 1.0, 0.0, 1.0);
 
-std::string smf_path("models/lo-sphere.smf");
+std::string smf_path("models/frog.smf");
 
 double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
@@ -92,7 +94,7 @@ int current_projection = PARALLEL_PROJECTION;
 
 void
 parse_smf(std::string file_path, std::vector<vec3> &vertices, std::vector<vec3> &faces) {
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Parsing smf file: %s\n", file_path.c_str());
   }
 
@@ -119,7 +121,7 @@ parse_smf(std::string file_path, std::vector<vec3> &vertices, std::vector<vec3> 
     fclose (file);
   }
 
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Parse complete.\n");
   }
 }
@@ -127,7 +129,7 @@ parse_smf(std::string file_path, std::vector<vec3> &vertices, std::vector<vec3> 
 std::vector<vec4>
 get_vertices(std::vector<vec3> points, std::vector<vec3> faces)
 {
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Getting vertices.\n");
   }
 
@@ -138,7 +140,7 @@ get_vertices(std::vector<vec3> points, std::vector<vec3> faces)
     vertices.push_back(vec4(points.at(faces.at(i).z - 1), 1.0));
   }
 
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Vertices gotten: %u.\n", (uint) vertices.size());
   }
 
@@ -168,11 +170,12 @@ max_double(double one, double two)
 void
 calculate_bounding_box(std::vector<vec3> points)
 {
-  if(DEBUG) {
+  if(debug) {
     printf("[DEBUG] Calculating bounding box.\n");
   }
   double min_num = 5000.0;
   double max_num = -5000.0;
+
   for (uint i = 0; i < points.size(); i++) {
     vec3 p = points.at(i);
     min_num = min_double(p.x, min_num);
@@ -182,7 +185,7 @@ calculate_bounding_box(std::vector<vec3> points)
     min_num = min_double(p.z, min_num);
     max_num = max_double(p.z, max_num);
   }
-  
+
   bounding_box[BOUNDING_BOX_INDEX_LEFT]   = min_num;
   bounding_box[BOUNDING_BOX_INDEX_RIGHT]  = max_num;
   bounding_box[BOUNDING_BOX_INDEX_BOTTOM] = min_num;
@@ -190,7 +193,7 @@ calculate_bounding_box(std::vector<vec3> points)
   bounding_box[BOUNDING_BOX_INDEX_NEAR]   = min_num;
   bounding_box[BOUNDING_BOX_INDEX_FAR]    = max_num;
 
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Bounding box calculated\n");
     for (int i = 0; i < BOUNDING_BOX_SIZE; i++) {
       printf("[DEBUG] %f\n", bounding_box[i]);
@@ -201,7 +204,7 @@ calculate_bounding_box(std::vector<vec3> points)
 void
 calculate_phong_shading_model(std::vector<color4> &colors, std::vector<vec3> points, std::vector<vec3> faces)
 {
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Calculating Phong shading model.\n");
   }
 
@@ -218,15 +221,15 @@ calculate_phong_shading_model(std::vector<color4> &colors, std::vector<vec3> poi
     color4 diffuse = diffuse0 * max_double(dot(n, normalize(light0_pos)),0.0);
     diffuse += diffuse1 * max_double(dot(n, normalize(light1_pos)),0.0);
 
-    if (DEBUG) {
+    if (debug) {
       printf("[DEBUG] diffuse %f, %f, %f\n", diffuse.x, diffuse.y, diffuse.z);
     }
     colors.push_back(DEFAULT_COLOR * diffuse);
     colors.push_back(DEFAULT_COLOR * diffuse);
-    colors.push_back(DEFAULT_COLOR * diffuse);    
+    colors.push_back(DEFAULT_COLOR * diffuse);
   }
 
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Phong shading model calculated.\n");
   }
 }
@@ -240,12 +243,12 @@ double scale(double valueIn, double baseMin, double baseMax, double limitMin, do
 void
 scale_colors(std::vector<color4> &colors)
 {
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Scaling colors.\n");
   }
   double max_color = -500.0;
   double min_color = 500.0;
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] printing colors.\n");
     for(uint i = 0; i < colors.size(); i++) {
       printf("[DEBUG] %f, %f, %f\n", colors.at(i).x, colors.at(i).y, colors.at(i).z);
@@ -260,7 +263,7 @@ scale_colors(std::vector<color4> &colors)
     min_color = min_double(min_color, colors.at(i).z);
   }
 
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] min_color=%f, max_color=%f\n", min_color, max_color);
   }
 
@@ -269,7 +272,7 @@ scale_colors(std::vector<color4> &colors)
     colors.at(i).y = scale(colors.at(i).y, min_color, max_color, 0, 1.0);
     colors.at(i).z = scale(colors.at(i).z, min_color, max_color, 0, 1.0);
   }
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Colors scaled.\n");
   }
 }
@@ -280,6 +283,11 @@ init( void )
 
   parse_smf(smf_path, points, faces);
 
+  if (faces.size() > DEBUG_MAX_FACES) {
+    printf("[DEBUG] Number of faces (%u) are greater than '%d', disabling DEBUG \n", faces.size(), DEBUG_MAX_FACES);
+    debug = false;
+  }
+
   vertices = get_vertices(points, faces);
 
   calculate_bounding_box(points);
@@ -289,7 +297,7 @@ init( void )
 
   scale_colors(colors);
 
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] printing points.\n");
     for(uint i = 0; i < points.size(); i++) {
       printf("[DEBUG] %f, %f, %f\n", points.at(i).x, points.at(i).y, points.at(i).z);
@@ -358,10 +366,8 @@ vec4
 get_eye( void )
 {
   double angle = t;
-  return vec4(cos(angle),
-  	      eye_y,
-  	      eye_z+sin(angle),
-  	      1.0);
+  mat4 rotate = RotateZ(angle);
+  return rotate * vec4(1.0, 1.0, 1.0, 1.0);
 }
 
 vec4
@@ -396,18 +402,24 @@ display( void )
   mat4 projection;
   if (PARALLEL_PROJECTION == current_projection) {
     //Ortho(left, right, bottom, top, near, far);
-    projection = Ortho(bounding_box[BOUNDING_BOX_INDEX_LEFT],
+    projection = Ortho(bounding_box[BOUNDING_BOX_INDEX_LEFT]
+		       - bounding_box[BOUNDING_BOX_INDEX_RIGHT],
 		       bounding_box[BOUNDING_BOX_INDEX_RIGHT],
-		       bounding_box[BOUNDING_BOX_INDEX_BOTTOM],
+		       bounding_box[BOUNDING_BOX_INDEX_BOTTOM]
+		       - bounding_box[BOUNDING_BOX_INDEX_TOP],
 		       bounding_box[BOUNDING_BOX_INDEX_TOP],
-		       bounding_box[BOUNDING_BOX_INDEX_NEAR],
+		       bounding_box[BOUNDING_BOX_INDEX_NEAR]
+		       - bounding_box[BOUNDING_BOX_INDEX_FAR],
 		       bounding_box[BOUNDING_BOX_INDEX_FAR]);
   } else {
-    projection = Frustum(bounding_box[BOUNDING_BOX_INDEX_LEFT],
+    projection = Frustum(bounding_box[BOUNDING_BOX_INDEX_LEFT]
+			 - bounding_box[BOUNDING_BOX_INDEX_RIGHT],
 			 bounding_box[BOUNDING_BOX_INDEX_RIGHT],
-			 bounding_box[BOUNDING_BOX_INDEX_BOTTOM],
+			 bounding_box[BOUNDING_BOX_INDEX_BOTTOM]
+			 - bounding_box[BOUNDING_BOX_INDEX_TOP],
 			 bounding_box[BOUNDING_BOX_INDEX_TOP],
-			 bounding_box[BOUNDING_BOX_INDEX_NEAR],
+			 bounding_box[BOUNDING_BOX_INDEX_NEAR]
+			 - bounding_box[BOUNDING_BOX_INDEX_FAR],
 			 bounding_box[BOUNDING_BOX_INDEX_FAR]);
   }
 
@@ -462,6 +474,7 @@ setupMenu ( void )
 void
 printHelp ( void ) {
   printf("%s\n", TITLE);
+  printf("Use right-click menu to change perspective.\n");
   printf("Keyboard options:\n");
   printf("q - move eye up\n");
   printf("a - move eye down\n");
@@ -480,7 +493,7 @@ main( int argc, char **argv )
   if (argc > 1) {
     smf_path = std::string(argv[1]);
   }
-  if (DEBUG) {
+  if (debug) {
     printf("[DEBUG] Filepath: %s\n", smf_path.c_str());
   }
 
