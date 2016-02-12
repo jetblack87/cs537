@@ -8,3 +8,18 @@ How to compile and run:
       - run: launches the application.
 
    To compile and run, execute 'make run'.
+
+   To run against all .smf files, execute 'make run_all'.
+
+There are currently some issues with the application:
+1. The shading is a little harsh - not sure if that's normal.
+2. The rotation around objects is a little off when the object
+   is not centered at the origin in the .smf.
+3. For some reason, the object are skewed to the side and are
+   not centered in view. lo-sphere.smf shows up in the center,
+   but nothing else.
+4. The increasing/decreasing the height of the camera work,
+   but the moving in/out only really works in perspective
+   projection.
+
+P.S. This has been a very challenging assignment.

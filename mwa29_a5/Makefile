@@ -11,6 +11,9 @@ clean:
 run: build
 	@./$(APP)
 
+run_all: build
+	for x in `ls ./models/`; do ./$(APP) ./models/$$x; done
+
 $(APP): 
 	@g++ $@.cpp Common/InitShader.o $(OPTIONS) -o $@
 

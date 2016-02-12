@@ -52,7 +52,7 @@ const double EYE_DELTA = 0.25;
 //----   GLOBALS      ------------------------------------------------------
 //--------------------------------------------------------------------------
 
-bool debug = true;
+bool debug = false;
 
 int mainWindow;
 int menu;
@@ -61,8 +61,8 @@ int w = 600, h = 600;
 double t  = 0;   // the time variable
 double dt = DEFAULT_DELTA; // the delta for time increment
 
-double eye_y = 0.0;
-double eye_z = 0.0;
+double eye_verticle_angle = 0.0;
+double eye_radius = 0.0;
 
 GLint ModelView_loc;
 GLint Projection_loc;
@@ -84,7 +84,7 @@ vec4 ambient1(1.0, 1.0, 1.0, 1.0);
 vec4 specular1(1.0, 1.0, 1.0, 1.0);
 vec4 light1_pos(-1.0, 1.0, 0.0, 1.0);
 
-std::string smf_path("models/frog.smf");
+std::string smf_path("models/cube.smf");
 
 double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
@@ -186,6 +186,9 @@ calculate_bounding_box(std::vector<vec3> points)
     max_num = max_double(p.z, max_num);
   }
 
+  min_num = min_double(-1.0, min_num); // don't go lower than -1
+  max_num = max_double( 1.0, max_num); // don't go higher than 1
+
   bounding_box[BOUNDING_BOX_INDEX_LEFT]   = min_num;
   bounding_box[BOUNDING_BOX_INDEX_RIGHT]  = max_num;
   bounding_box[BOUNDING_BOX_INDEX_BOTTOM] = min_num;
@@ -284,7 +287,7 @@ init( void )
   parse_smf(smf_path, points, faces);
 
   if (faces.size() > DEBUG_MAX_FACES) {
-    printf("[DEBUG] Number of faces (%u) are greater than '%d', disabling DEBUG \n", faces.size(), DEBUG_MAX_FACES);
+    printf("[DEBUG] Number of faces (%u) are greater than '%d', disabling DEBUG \n", (uint) faces.size(), DEBUG_MAX_FACES);
     debug = false;
   }
 
@@ -366,8 +369,31 @@ vec4
 get_eye( void )
 {
   double angle = t;
-  mat4 rotate = RotateZ(angle);
-  return rotate * vec4(1.0, 1.0, 1.0, 1.0);
+
+  vec4 eye(0.0,
+	   0.0,
+	   1.0,
+	   1.0);
+
+  mat4 eye_transform(1.0);
+
+
+  vec4 centroid((bounding_box[BOUNDING_BOX_INDEX_LEFT]
+		 + bounding_box[BOUNDING_BOX_INDEX_RIGHT]) / 2,
+		(bounding_box[BOUNDING_BOX_INDEX_BOTTOM]
+		 + bounding_box[BOUNDING_BOX_INDEX_TOP]) / 2,
+		(bounding_box[BOUNDING_BOX_INDEX_NEAR]
+		 + bounding_box[BOUNDING_BOX_INDEX_FAR]) / 2);
+
+  eye_transform = Translate(-centroid) * eye_transform;
+  
+  eye_transform = Translate(0.0,0.0,eye_radius) * eye_transform;
+  eye_transform = RotateX(eye_verticle_angle) * eye_transform;
+  eye_transform = RotateY(angle) * eye_transform;
+
+  eye_transform = Translate(centroid) * eye_transform;
+
+  return eye_transform * eye;
 }
 
 vec4
@@ -385,7 +411,11 @@ get_eye_at( void )
 vec4
 get_up( vec4 eye )
 {
-  return vec4(eye.x, 1.0, eye.z, 1.0);
+  if (PARALLEL_PROJECTION == current_projection) {
+    return vec4(eye.x, 1.0, eye.z, 1.0);
+  } else {
+    return vec4(eye.x, -1.0, eye.z, 1.0);
+  }
 }
 
 void
@@ -444,10 +474,10 @@ void
 keyboard( unsigned char key, int x, int y )
 {
   switch (key) {
-  case KEY_EYE_UP:    eye_y += EYE_DELTA;   break;
-  case KEY_EYE_DOWN:  eye_y -= EYE_DELTA;   break;
-  case KEY_EYE_CLOSE: eye_z += EYE_DELTA;   break;
-  case KEY_EYE_FAR:   eye_z -= EYE_DELTA;   break;
+  case KEY_EYE_UP:    eye_verticle_angle += EYE_DELTA;   break;
+  case KEY_EYE_DOWN:  eye_verticle_angle -= EYE_DELTA;   break;
+  case KEY_EYE_CLOSE: eye_radius += EYE_DELTA;   break;
+  case KEY_EYE_FAR:   eye_radius -= EYE_DELTA;   break;
   case KEY_DELTAUP:   dt    += DELTA_DELTA; break;
   case KEY_DELTADOWN: dt    -= DELTA_DELTA; break;
   case KEY_STOP:      glutIdleFunc(NULL);   break;
