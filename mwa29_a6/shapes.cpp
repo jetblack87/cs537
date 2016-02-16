@@ -8,12 +8,13 @@
 
 typedef vec3 color3;
 typedef vec4 color4;
+typedef vec4 point4;
 
 //--------------------------------------------------------------------------
 //----   CONSTANTS    ------------------------------------------------------
 //--------------------------------------------------------------------------
 
-const char *TITLE = "mwa29 - CS537 assignment 5";
+const char *TITLE = "mwa29 - CS537 assignment 6";
 
 const int  DEBUG_MAX_FACES = 1500;
 
@@ -45,6 +46,8 @@ const color4 DEFAULT_COLOR = color4(0.0, 1.0, 0.0, 1.0);
 
 const int PARALLEL_PROJECTION    = 0;
 const int PERSPECTIVE_PROJECTION = 1;
+const int PHONG_SHADING          = 2;
+const int GOURAUD_SHADING        = 3;
 
 const double EYE_DELTA = 0.25;
 
@@ -75,26 +78,16 @@ GLint Projection_loc;
 
 std::vector<vec3>   points;
 std::vector<vec4>   vertices;
+std::vector<vec4>   normals;
 std::vector<vec3>   faces;
 std::vector<color4> colors;
-
-// Light0
-vec4 diffuse0(1.0, 1.0, 1.0, 1.0);
-vec4 ambient0(1.0, 1.0, 1.0, 1.0);
-vec4 specular0(1.0, 1.0, 1.0, 1.0);
-vec4 light0_pos(1.0, 01.0, 0.0, 1.0);
-
-// Light1
-vec4 diffuse1(1.0, 1.0, 1.0, 1.0);
-vec4 ambient1(1.0, 1.0, 1.0, 1.0);
-vec4 specular1(1.0, 1.0, 1.0, 1.0);
-vec4 light1_pos(-1.0, 1.0, 0.0, 1.0);
 
 std::string smf_path("models/cube.smf");
 
 double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
 int current_projection = PARALLEL_PROJECTION;
+int current_shading    = PHONG_SHADING;
 
 //--------------------------------------------------------------------------
 
@@ -151,6 +144,25 @@ get_vertices(std::vector<vec3> points, std::vector<vec3> faces)
   }
 
   return vertices;
+}
+
+std::vector<vec4>
+get_normals(std::vector<vec3> points, std::vector<vec3> faces)
+{
+  std::vector<vec4>   normals;
+  for (uint i = 0; i < faces.size(); i++) {
+    vec4 p0 = points.at(faces.at(i).x - 1);
+    vec4 p1 = points.at(faces.at(i).y - 1);
+    vec4 p2 = points.at(faces.at(i).z - 1);
+
+    vec4 u = p1 - p0;
+    vec4 v = p2 - p0;
+
+    vec3 normal = normalize( cross(u, v) );
+
+    normals.push_back(normal);
+  }
+  return normals;
 }
 
 double
@@ -211,100 +223,20 @@ calculate_bounding_box(std::vector<vec3> points)
 }
 
 void
-calculate_phong_shading_model(std::vector<color4> &colors, std::vector<vec3> points, std::vector<vec3> faces)
+read_smf ( void )
 {
-  if (debug) {
-    printf("[DEBUG] Calculating Phong shading model.\n");
-  }
-
-  for (uint i = 0; i < faces.size(); i++) {
-    GLint index_one   = faces.at(i).x - 1;
-    GLint index_two   = faces.at(i).y - 1;
-    GLint index_three = faces.at(i).z - 1;
-    vec3 p0 = points.at(index_one);
-    vec3 p1 = points.at(index_two);
-    vec3 p2 = points.at(index_three);
-
-    vec3 n = normalize((p1 - p0) * (p2 - p0));
-
-    color4 diffuse = diffuse0 * max_double(dot(n, normalize(light0_pos)),0.0);
-    diffuse += diffuse1 * max_double(dot(n, normalize(light1_pos)),0.0);
-
-    if (debug) {
-      printf("[DEBUG] diffuse %f, %f, %f\n", diffuse.x, diffuse.y, diffuse.z);
-    }
-    colors.push_back(DEFAULT_COLOR * diffuse);
-    colors.push_back(DEFAULT_COLOR * diffuse);
-    colors.push_back(DEFAULT_COLOR * diffuse);
-  }
-
-  if (debug) {
-    printf("[DEBUG] Phong shading model calculated.\n");
-  }
-}
-
-
-// Taken from http://stackoverflow.com/questions/5294955/how-to-scale-down-a-range-of-numbers-with-a-known-min-and-max-value
-double scale(double valueIn, double baseMin, double baseMax, double limitMin, double limitMax) {
-  return ((limitMax - limitMin) * (valueIn - baseMin) / (baseMax - baseMin)) + limitMin;
-}
-
-void
-scale_colors(std::vector<color4> &colors)
-{
-  if (debug) {
-    printf("[DEBUG] Scaling colors.\n");
-  }
-  double max_color = -500.0;
-  double min_color = 500.0;
-  if (debug) {
-    printf("[DEBUG] printing colors.\n");
-    for(uint i = 0; i < colors.size(); i++) {
-      printf("[DEBUG] %f, %f, %f\n", colors.at(i).x, colors.at(i).y, colors.at(i).z);
-    }
-  }
-  for (uint i = 0; i < colors.size(); i++) {
-    max_color = max_double(max_color, colors.at(i).x);
-    max_color = max_double(max_color, colors.at(i).y);
-    max_color = max_double(max_color, colors.at(i).z);
-    min_color = min_double(min_color, colors.at(i).x);
-    min_color = min_double(min_color, colors.at(i).y);
-    min_color = min_double(min_color, colors.at(i).z);
-  }
-
-  if (debug) {
-    printf("[DEBUG] min_color=%f, max_color=%f\n", min_color, max_color);
-  }
-
-  for (uint i = 0; i < colors.size(); i++) {
-    colors.at(i).x = scale(colors.at(i).x, min_color, max_color, 0, 1.0);
-    colors.at(i).y = scale(colors.at(i).y, min_color, max_color, 0, 1.0);
-    colors.at(i).z = scale(colors.at(i).z, min_color, max_color, 0, 1.0);
-  }
-  if (debug) {
-    printf("[DEBUG] Colors scaled.\n");
-  }
-}
-
-void
-init( void )
-{
-
   parse_smf(smf_path, points, faces);
 
-  if (faces.size() > DEBUG_MAX_FACES) {
+  if (debug && faces.size() > DEBUG_MAX_FACES) {
     printf("[DEBUG] Number of faces (%u) are greater than '%d', disabling DEBUG \n", (uint) faces.size(), DEBUG_MAX_FACES);
     debug = false;
   }
 
   vertices = get_vertices(points, faces);
 
+  normals = get_normals(points, faces);
+
   calculate_bounding_box(points);
-
-  std::vector<color4> colors;
-  calculate_phong_shading_model(colors, points, faces);
-
-  scale_colors(colors);
 
   if (debug) {
     printf("[DEBUG] printing points.\n");
@@ -327,7 +259,11 @@ init( void )
       printf("[DEBUG] %f, %f, %f\n", colors.at(i).x, colors.at(i).y, colors.at(i).z);
     }
   }
+}
 
+void
+init( void )
+{
   // Create a vertex array object
   GLuint vao[1];
   glGenVertexArrays( 1, vao );
@@ -339,7 +275,8 @@ init( void )
   glBindBuffer( GL_ARRAY_BUFFER, buffer );
   glBufferData( GL_ARRAY_BUFFER,
 		(vertices.size()*sizeof(vec4))
-		+ (colors.size()*sizeof(color4)),
+		+ (colors.size()*sizeof(color4))
+		+ (normals.size()*sizeof(vec4)),
 		NULL, GL_STATIC_DRAW );
 
   //load data separately
@@ -349,9 +286,19 @@ init( void )
   glBufferSubData(GL_ARRAY_BUFFER, vertices.size()*sizeof(vec4),
 		  colors.size()*sizeof(color4),
 		  &colors[0]);
+  glBufferSubData(GL_ARRAY_BUFFER, vertices.size()*sizeof(vec4)
+		  + colors.size()*sizeof(color4),
+		  normals.size()*sizeof(vec4),
+		  &normals[0]);
 
   // Load shaders and use the resulting shader program
-  GLuint program = InitShader( "vshdrcube.glsl", "fshdrcube.glsl" );
+  //  GLuint program = InitShader( "vshdrcube.glsl", "fshdrcube.glsl" );
+  GLuint program;
+  if (current_shading == PHONG_SHADING) {
+    program = InitShader( "vshader53.glsl", "fshader53.glsl" );
+  } else {
+    program = InitShader( "vshader56.glsl", "fshader56.glsl" );
+  }
   glUseProgram( program );
 
   // Initialize the vertex position attribute from the vertex shader
@@ -363,10 +310,46 @@ init( void )
   glEnableVertexAttribArray(vColor_loc);
   glVertexAttribPointer(vColor_loc, 4, GL_FLOAT, GL_FALSE, 0,
 			BUFFER_OFFSET(vertices.size()*sizeof(vec4)));
+  GLuint vNormal_loc = glGetAttribLocation(program, "vNormal");
+  glEnableVertexAttribArray(vNormal_loc);
+  glVertexAttribPointer(vNormal_loc, 4, GL_FLOAT, GL_FALSE, 0,
+			BUFFER_OFFSET(normals.size()*sizeof(vec4)));
 
-  ModelView_loc = glGetUniformLocation( program, "matrix" );
+  // Initialize shader lighting parameters
+  point4 light_position( 0.0, 0.0, -1.0, 0.0 );
+  color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
+  color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
+  color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
 
+  color4 material_ambient( 1.0, 0.0, 1.0, 1.0 );
+  color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
+  color4 material_specular( 1.0, 0.8, 0.0, 1.0 );
+  float  material_shininess = 100.0;
+
+  color4 ambient_product = light_ambient * material_ambient;
+  color4 diffuse_product = light_diffuse * material_diffuse;
+  color4 specular_product = light_specular * material_specular;
+
+  glUniform4fv( glGetUniformLocation(program, "AmbientProduct"),
+		1, ambient_product );
+  glUniform4fv( glGetUniformLocation(program, "DiffuseProduct"),
+		1, diffuse_product );
+  glUniform4fv( glGetUniformLocation(program, "SpecularProduct"),
+		1, specular_product );
+	
+  glUniform4fv( glGetUniformLocation(program, "LightPosition"),
+		1, light_position );
+
+  glUniform1f( glGetUniformLocation(program, "Shininess"),
+	       material_shininess );
+		 
+  // Retrieve transformation uniform variable locations
+  ModelView_loc = glGetUniformLocation( program, "ModelView" );
   Projection_loc = glGetUniformLocation( program, "Projection" );
+
+  glEnable( GL_DEPTH_TEST );
+
+  glShadeModel(GL_FLAT);
 
   glClearColor( 0.75, 0.75, 0.75, 1.0 );
 }
@@ -424,6 +407,7 @@ get_up( vec4 eye )
 void
 display( void )
 {
+  init();
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
   // LookAt(eye, at, up)
@@ -504,7 +488,12 @@ keyboard( unsigned char key, int x, int y )
 void
 processMenuEvents(int menuChoice)
 {
-  current_projection = menuChoice;
+  switch (menuChoice) {
+  case PARALLEL_PROJECTION: current_projection = PARALLEL_PROJECTION; break;
+  case PERSPECTIVE_PROJECTION: current_projection = PERSPECTIVE_PROJECTION; break;
+  case PHONG_SHADING: current_shading = PHONG_SHADING; break;
+  case GOURAUD_SHADING: current_shading = GOURAUD_SHADING; break;
+  }
 }
 
 void
@@ -513,6 +502,8 @@ setupMenu ( void )
   glutCreateMenu(processMenuEvents);
   glutAddMenuEntry("Parallel projection",    PARALLEL_PROJECTION);
   glutAddMenuEntry("Perspective projection", PERSPECTIVE_PROJECTION);
+  glutAddMenuEntry("Phong shading",          PHONG_SHADING);
+  glutAddMenuEntry("Gouraud shading",        GOURAUD_SHADING);
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
@@ -554,6 +545,7 @@ main( int argc, char **argv )
   glewExperimental=GL_TRUE;
   glewInit();
 
+  read_smf();
   init();
   setupMenu();
   glutDisplayFunc ( display  );
