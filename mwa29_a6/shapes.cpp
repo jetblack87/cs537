@@ -48,6 +48,11 @@ const int PERSPECTIVE_PROJECTION = 1;
 
 const double EYE_DELTA = 0.25;
 
+const double MAX_EYE_THETA = 360;
+const double MIN_EYE_THETA = 0;
+const double MAX_EYE_PHI   = 180;
+const double MIN_EYE_PHI   = -180;
+
 //--------------------------------------------------------------------------
 //----   GLOBALS      ------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -61,8 +66,9 @@ int w = 600, h = 600;
 double t  = 0;   // the time variable
 double dt = DEFAULT_DELTA; // the delta for time increment
 
-double eye_verticle_angle = 0.0;
 double eye_radius = 0.0;
+double eye_theta  = 0.0;
+double eye_phi    = 0.0;
 
 GLint ModelView_loc;
 GLint Projection_loc;
@@ -368,15 +374,12 @@ init( void )
 vec4
 get_eye( void )
 {
-  double angle = t;
-
   vec4 eye(0.0,
 	   0.0,
 	   1.0,
 	   1.0);
 
   mat4 eye_transform(1.0);
-
 
   vec4 centroid((bounding_box[BOUNDING_BOX_INDEX_LEFT]
 		 + bounding_box[BOUNDING_BOX_INDEX_RIGHT]) / 2,
@@ -386,10 +389,10 @@ get_eye( void )
 		 + bounding_box[BOUNDING_BOX_INDEX_FAR]) / 2);
 
   eye_transform = Translate(-centroid) * eye_transform;
-  
+
   eye_transform = Translate(0.0,0.0,eye_radius) * eye_transform;
-  eye_transform = RotateX(eye_verticle_angle) * eye_transform;
-  eye_transform = RotateY(angle) * eye_transform;
+  eye_transform = RotateX(eye_phi) * eye_transform;
+  eye_transform = RotateY(eye_theta) * eye_transform;
 
   eye_transform = Translate(centroid) * eye_transform;
 
@@ -467,6 +470,10 @@ void
 myidle ( void )
 {
   t += dt;
+  eye_theta += dt;
+  if (eye_theta > MAX_EYE_THETA) {
+    eye_theta = MIN_EYE_THETA;
+  }
   glutPostRedisplay();
 }
 
@@ -474,8 +481,8 @@ void
 keyboard( unsigned char key, int x, int y )
 {
   switch (key) {
-  case KEY_EYE_UP:    eye_verticle_angle += EYE_DELTA;   break;
-  case KEY_EYE_DOWN:  eye_verticle_angle -= EYE_DELTA;   break;
+  case KEY_EYE_UP:    eye_phi += EYE_DELTA;   break;
+  case KEY_EYE_DOWN:  eye_phi -= EYE_DELTA;   break;
   case KEY_EYE_CLOSE: eye_radius += EYE_DELTA;   break;
   case KEY_EYE_FAR:   eye_radius -= EYE_DELTA;   break;
   case KEY_DELTAUP:   dt    += DELTA_DELTA; break;
@@ -483,6 +490,14 @@ keyboard( unsigned char key, int x, int y )
   case KEY_STOP:      glutIdleFunc(NULL);   break;
   case KEY_START:     glutIdleFunc(myidle); break;
   }
+
+  if (eye_phi < MIN_EYE_PHI) {
+    eye_phi  = MIN_EYE_PHI;
+  }
+  if (eye_phi > MAX_EYE_PHI) {
+    eye_phi  = MAX_EYE_PHI;
+  }
+
   glutPostWindowRedisplay(mainWindow);
 }
 
