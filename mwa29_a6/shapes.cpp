@@ -50,10 +50,16 @@ const int BOUNDING_BOX_SIZE         = 6;
 
 const color4 DEFAULT_COLOR = color4(0.0, 1.0, 0.0, 1.0);
 
+
+// MENU ITEMS
+
 const int PARALLEL_PROJECTION    = 0;
 const int PERSPECTIVE_PROJECTION = 1;
 const int PHONG_SHADING          = 2;
 const int GOURAUD_SHADING        = 3;
+const int BRASS_MATERIAL         = 4;
+const int RED_PLASTIC_MATERIAL   = 5;
+const int GREEN_RUBBER_MATERIAL  = 6;
 
 const double EYE_DELTA = 0.25;
 
@@ -66,6 +72,22 @@ const double MAX_LIGHT_THETA = 360;
 const double MIN_LIGHT_THETA = 0;
 const double MAX_LIGHT_PHI   = 180;
 const double MIN_LIGHT_PHI   = -180;
+
+const color4 BRASS_AMBIENT(0.329412, 0.223529, 0.027451, 1.0);
+const color4 BRASS_DIFFUSE(0.780392, 0.568627, 0.113725, 1.0);
+const color4 BRASS_SPECULAR(0.992157, 0.941176, 0.807843, 1.0);
+const float  BRASS_SHININESS = 0.21794872;
+
+const color4 RED_PLASTIC_AMBIENT(0.0, 0.0, 0.0, 1.0);
+const color4 RED_PLASTIC_DIFFUSE(0.5, 0.0, 0.0, 1.0);
+const color4 RED_PLASTIC_SPECULAR(0.7, 0.6, 0.6, 1.0);
+const float  RED_PLASTIC_SHININESS = 0.25;
+
+const color4 GREEN_RUBBER_AMBIENT(0.0, 0.05, 0.0, 1.0);
+const color4 GREEN_RUBBER_DIFFUSE(0.4, 0.5, 0.4, 1.0);
+const color4 GREEN_RUBBER_SPECULAR(0.04, 0.7, 0.04, 1.0);
+const float  GREEN_RUBBER_SHININESS = 0.078125;
+
 
 //--------------------------------------------------------------------------
 //----   GLOBALS      ------------------------------------------------------
@@ -117,11 +139,10 @@ double light1_theta  = 0.0;
 double light1_phi    = 0.0;
 
 
-color4 material_ambient( 1.0, 0.0, 1.0, 1.0 );
-color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
-color4 material_specular( 1.0, 0.8, 0.0, 1.0 );
-
-float  material_shininess = 100.0;
+color4 material_ambient   = BRASS_AMBIENT;
+color4 material_diffuse   = BRASS_DIFFUSE;
+color4 material_specular  = BRASS_SPECULAR;
+float  material_shininess = BRASS_SHININESS;
 
 //--------------------------------------------------------------------------
 
@@ -352,34 +373,28 @@ init( void )
 
   glUniform4fv( glGetUniformLocation(program, "MaterialAmbient"),
 		1,  material_ambient);
-
   glUniform4fv( glGetUniformLocation(program, "MaterialDiffuse"),
 		1,  material_diffuse);
-
   glUniform4fv( glGetUniformLocation(program, "MaterialSpecular"),
 		1,  material_specular);
 
+  // Light0
   glUniform4fv( glGetUniformLocation(program, "Light0Position"),
 		1,  light0_position);
-
   glUniform4fv( glGetUniformLocation(program, "Light0Ambient"),
 		1,  light0_ambient);
-
   glUniform4fv( glGetUniformLocation(program, "Light0Diffuse"),
 		1,  light0_diffuse);
-
   glUniform4fv( glGetUniformLocation(program, "Light0Specular"),
 		1,  light0_specular);
 
+  // Light1
   glUniform4fv( glGetUniformLocation(program, "Light1Position"),
 		1,  light1_position);
-
   glUniform4fv( glGetUniformLocation(program, "Light1Ambient"),
 		1,  light1_ambient);
-
   glUniform4fv( glGetUniformLocation(program, "Light1Diffuse"),
 		1,  light1_diffuse);
-
   glUniform4fv( glGetUniformLocation(program, "Light1Specular"),
 		1,  light1_specular);
 
@@ -520,10 +535,10 @@ myidle ( void )
 {
   t += dt;
 
-  // eye_theta += dt;
-  // if (eye_theta > MAX_EYE_THETA) {
-  //   eye_theta = MIN_EYE_THETA;
-  // }
+  eye_theta += dt;
+  if (eye_theta > MAX_EYE_THETA) {
+    eye_theta = MIN_EYE_THETA;
+  }
 
   glutPostRedisplay();
 }
@@ -587,6 +602,27 @@ processMenuEvents(int menuChoice)
   case PERSPECTIVE_PROJECTION: current_projection = PERSPECTIVE_PROJECTION; break;
   case PHONG_SHADING: current_shading = PHONG_SHADING; init(); break;
   case GOURAUD_SHADING: current_shading = GOURAUD_SHADING; init(); break;
+  case BRASS_MATERIAL: 
+    material_ambient = BRASS_AMBIENT;
+    material_diffuse = BRASS_DIFFUSE;
+    material_specular = BRASS_SPECULAR;
+    material_shininess = BRASS_SHININESS;
+    init();
+    break;
+  case RED_PLASTIC_MATERIAL: 
+    material_ambient = RED_PLASTIC_AMBIENT;
+    material_diffuse = RED_PLASTIC_DIFFUSE;
+    material_specular = RED_PLASTIC_SPECULAR;
+    material_shininess = RED_PLASTIC_SHININESS;
+    init();
+    break;
+  case GREEN_RUBBER_MATERIAL: 
+    material_ambient = GREEN_RUBBER_AMBIENT;
+    material_diffuse = GREEN_RUBBER_DIFFUSE;
+    material_specular = GREEN_RUBBER_SPECULAR;
+    material_shininess = GREEN_RUBBER_SHININESS;
+    init();
+    break;
   }
 }
 
@@ -598,6 +634,9 @@ setupMenu ( void )
   glutAddMenuEntry("Perspective projection", PERSPECTIVE_PROJECTION);
   glutAddMenuEntry("Phong shading",          PHONG_SHADING);
   glutAddMenuEntry("Gouraud shading",        GOURAUD_SHADING);
+  glutAddMenuEntry("Brass material",         BRASS_MATERIAL);
+  glutAddMenuEntry("Red Plastic material",   RED_PLASTIC_MATERIAL);
+  glutAddMenuEntry("Green Rubber material",  GREEN_RUBBER_MATERIAL);
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
