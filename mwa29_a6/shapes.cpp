@@ -18,14 +18,20 @@ const char *TITLE = "mwa29 - CS537 assignment 6";
 
 const int  DEBUG_MAX_FACES = 1500;
 
-const char KEY_EYE_UP    = 'q';
-const char KEY_EYE_DOWN  = 'a';
-const char KEY_EYE_CLOSE = 'w';
-const char KEY_EYE_FAR   = 's';
-const char KEY_DELTAUP   = 'e';
-const char KEY_DELTADOWN = 'd';
-const char KEY_STOP      = 'r';
-const char KEY_START     = 'f';
+const char KEY_EYE_UP      = 'q';
+const char KEY_EYE_DOWN    = 'Q';
+const char KEY_EYE_CLOSE   = 'w';
+const char KEY_EYE_FAR     = 'W';
+const char KEY_DELTAUP     = 'e';
+const char KEY_DELTADOWN   = 'E';
+const char KEY_STOP        = 'r';
+const char KEY_START       = 'R';
+const char KEY_LIGHT_UP    = 'a';
+const char KEY_LIGHT_DOWN  = 'A';
+const char KEY_LIGHT_CLOSE = 's';
+const char KEY_LIGHT_FAR   = 'S';
+const char KEY_LIGHT_LEFT  = 'd';
+const char KEY_LIGHT_RIGHT = 'D';
 
 const double DELTA_DELTA = 0.001;
 
@@ -56,6 +62,11 @@ const double MIN_EYE_THETA = 0;
 const double MAX_EYE_PHI   = 180;
 const double MIN_EYE_PHI   = -180;
 
+const double MAX_LIGHT_THETA = 360;
+const double MIN_LIGHT_THETA = 0;
+const double MAX_LIGHT_PHI   = 180;
+const double MIN_LIGHT_PHI   = -180;
+
 //--------------------------------------------------------------------------
 //----   GLOBALS      ------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -68,6 +79,8 @@ int w = 600, h = 600;
 
 double t  = 0;   // the time variable
 double dt = DEFAULT_DELTA; // the delta for time increment
+
+double light_dt = 0.01;
 
 double eye_radius = 0.0;
 double eye_theta  = 0.0;
@@ -87,7 +100,28 @@ std::string smf_path("models/cube.smf");
 double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
 int current_projection = PARALLEL_PROJECTION;
-int current_shading    = PHONG_SHADING;
+int current_shading    = GOURAUD_SHADING;
+
+// Initialize shader lighting parameters
+point4 light0_position( 0.0, 0.0, -1.0, 0.0 );
+color4 light0_ambient( 0.2, 0.2, 0.2, 1.0 );
+color4 light0_diffuse( 1.0, 1.0, 1.0, 1.0 );
+color4 light0_specular( 1.0, 1.0, 1.0, 1.0 );
+
+point4 light1_position( 0.0, 0.0, 1.0, 0.0 );
+color4 light1_ambient( 0.2, 0.2, 0.2, 1.0 );
+color4 light1_diffuse( 1.0, 1.0, 1.0, 1.0 );
+color4 light1_specular( 1.0, 1.0, 1.0, 1.0 );
+double light1_radius = 0.0;
+double light1_theta  = 0.0;
+double light1_phi    = 0.0;
+
+
+color4 material_ambient( 1.0, 0.0, 1.0, 1.0 );
+color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
+color4 material_specular( 1.0, 0.8, 0.0, 1.0 );
+
+float  material_shininess = 100.0;
 
 //--------------------------------------------------------------------------
 
@@ -294,7 +328,7 @@ init( void )
   // Load shaders and use the resulting shader program
   //  GLuint program = InitShader( "vshdrcube.glsl", "fshdrcube.glsl" );
   GLuint program;
-  if (current_shading == PHONG_SHADING) {
+  if (current_shading == GOURAUD_SHADING) {
     program = InitShader( "vshader53.glsl", "fshader53.glsl" );
   } else {
     program = InitShader( "vshader56.glsl", "fshader56.glsl" );
@@ -315,30 +349,39 @@ init( void )
   glVertexAttribPointer(vNormal_loc, 4, GL_FLOAT, GL_FALSE, 0,
 			BUFFER_OFFSET(normals.size()*sizeof(vec4)));
 
-  // Initialize shader lighting parameters
-  point4 light_position( 0.0, 0.0, -1.0, 0.0 );
-  color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
-  color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
-  color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
 
-  color4 material_ambient( 1.0, 0.0, 1.0, 1.0 );
-  color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
-  color4 material_specular( 1.0, 0.8, 0.0, 1.0 );
-  float  material_shininess = 100.0;
+  glUniform4fv( glGetUniformLocation(program, "MaterialAmbient"),
+		1,  material_ambient);
 
-  color4 ambient_product = light_ambient * material_ambient;
-  color4 diffuse_product = light_diffuse * material_diffuse;
-  color4 specular_product = light_specular * material_specular;
+  glUniform4fv( glGetUniformLocation(program, "MaterialDiffuse"),
+		1,  material_diffuse);
 
-  glUniform4fv( glGetUniformLocation(program, "AmbientProduct"),
-		1, ambient_product );
-  glUniform4fv( glGetUniformLocation(program, "DiffuseProduct"),
-		1, diffuse_product );
-  glUniform4fv( glGetUniformLocation(program, "SpecularProduct"),
-		1, specular_product );
-	
-  glUniform4fv( glGetUniformLocation(program, "LightPosition"),
-		1, light_position );
+  glUniform4fv( glGetUniformLocation(program, "MaterialSpecular"),
+		1,  material_specular);
+
+  glUniform4fv( glGetUniformLocation(program, "Light0Position"),
+		1,  light0_position);
+
+  glUniform4fv( glGetUniformLocation(program, "Light0Ambient"),
+		1,  light0_ambient);
+
+  glUniform4fv( glGetUniformLocation(program, "Light0Diffuse"),
+		1,  light0_diffuse);
+
+  glUniform4fv( glGetUniformLocation(program, "Light0Specular"),
+		1,  light0_specular);
+
+  glUniform4fv( glGetUniformLocation(program, "Light1Position"),
+		1,  light1_position);
+
+  glUniform4fv( glGetUniformLocation(program, "Light1Ambient"),
+		1,  light1_ambient);
+
+  glUniform4fv( glGetUniformLocation(program, "Light1Diffuse"),
+		1,  light1_diffuse);
+
+  glUniform4fv( glGetUniformLocation(program, "Light1Specular"),
+		1,  light1_specular);
 
   glUniform1f( glGetUniformLocation(program, "Shininess"),
 	       material_shininess );
@@ -352,6 +395,29 @@ init( void )
   glShadeModel(GL_FLAT);
 
   glClearColor( 0.75, 0.75, 0.75, 1.0 );
+}
+
+void
+adjust_light1( void )
+{
+  mat4 light1_transform(1.0);
+
+  vec4 centroid((bounding_box[BOUNDING_BOX_INDEX_LEFT]
+		 + bounding_box[BOUNDING_BOX_INDEX_RIGHT]) / 2,
+		(bounding_box[BOUNDING_BOX_INDEX_BOTTOM]
+		 + bounding_box[BOUNDING_BOX_INDEX_TOP]) / 2,
+		(bounding_box[BOUNDING_BOX_INDEX_NEAR]
+		 + bounding_box[BOUNDING_BOX_INDEX_FAR]) / 2);
+
+  light1_transform = Translate(-centroid) * light1_transform;
+
+  light1_transform = Translate(0.0,0.0,light1_radius) * light1_transform;
+  light1_transform = RotateX(light1_phi) * light1_transform;
+  light1_transform = RotateY(light1_theta) * light1_transform;
+
+  light1_transform = Translate(centroid) * light1_transform;
+
+  light1_position = light1_transform * light1_position;
 }
 
 vec4
@@ -407,7 +473,6 @@ get_up( vec4 eye )
 void
 display( void )
 {
-  init();
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
   // LookAt(eye, at, up)
@@ -454,10 +519,12 @@ void
 myidle ( void )
 {
   t += dt;
-  eye_theta += dt;
-  if (eye_theta > MAX_EYE_THETA) {
-    eye_theta = MIN_EYE_THETA;
-  }
+
+  // eye_theta += dt;
+  // if (eye_theta > MAX_EYE_THETA) {
+  //   eye_theta = MIN_EYE_THETA;
+  // }
+
   glutPostRedisplay();
 }
 
@@ -473,6 +540,17 @@ keyboard( unsigned char key, int x, int y )
   case KEY_DELTADOWN: dt    -= DELTA_DELTA; break;
   case KEY_STOP:      glutIdleFunc(NULL);   break;
   case KEY_START:     glutIdleFunc(myidle); break;
+  case KEY_LIGHT_UP:     light1_phi    += light_dt; break;
+  case KEY_LIGHT_DOWN:   light1_phi    -= light_dt; break;
+  case KEY_LIGHT_CLOSE:  light1_radius += light_dt; break;
+  case KEY_LIGHT_FAR:    light1_radius -= light_dt; break;
+  case KEY_LIGHT_LEFT:   light1_theta  += light_dt; break;
+  case KEY_LIGHT_RIGHT:  light1_theta  -= light_dt; break;
+  }
+
+  if (debug) {
+    printf("keyboard '%c' - light1_phi=%f, light1_radius=%f, light1_theta=%f\n",
+	   key, light1_phi, light1_radius, light1_theta);
   }
 
   if (eye_phi < MIN_EYE_PHI) {
@@ -481,6 +559,22 @@ keyboard( unsigned char key, int x, int y )
   if (eye_phi > MAX_EYE_PHI) {
     eye_phi  = MAX_EYE_PHI;
   }
+
+  if (light1_theta < MIN_LIGHT_THETA) {
+    light1_theta = MAX_LIGHT_THETA;
+  }
+  if (light1_theta > MAX_LIGHT_THETA) {
+    light1_theta = MIN_LIGHT_THETA;
+  }
+  if (light1_phi < MIN_LIGHT_PHI) {
+    light1_phi  = MIN_LIGHT_PHI;
+  }
+  if (light1_phi > MAX_LIGHT_PHI) {
+    light1_phi  = MAX_LIGHT_PHI;
+  }
+  
+  adjust_light1();
+  init();
 
   glutPostWindowRedisplay(mainWindow);
 }
@@ -491,8 +585,8 @@ processMenuEvents(int menuChoice)
   switch (menuChoice) {
   case PARALLEL_PROJECTION: current_projection = PARALLEL_PROJECTION; break;
   case PERSPECTIVE_PROJECTION: current_projection = PERSPECTIVE_PROJECTION; break;
-  case PHONG_SHADING: current_shading = PHONG_SHADING; break;
-  case GOURAUD_SHADING: current_shading = GOURAUD_SHADING; break;
+  case PHONG_SHADING: current_shading = PHONG_SHADING; init(); break;
+  case GOURAUD_SHADING: current_shading = GOURAUD_SHADING; init(); break;
   }
 }
 
@@ -512,15 +606,20 @@ printHelp ( void ) {
   printf("%s\n", TITLE);
   printf("Use right-click menu to change perspective.\n");
   printf("Keyboard options:\n");
-  printf("q - move eye up\n");
-  printf("a - move eye down\n");
-  printf("w - move eye closer\n");
-  printf("s - move eye farther\n");
-  printf("e - spin eye faster\n");
-  printf("d - spin eye slower\n");
-  printf("r - stop movement\n");
-  printf("f - start movement\n");
-  printf("t - reset all transformations and deltas\n");
+  printf("%c - move eye up\n", KEY_EYE_UP);
+  printf("%c - move eye down\n" , KEY_EYE_DOWN);
+  printf("%c - move eye closer\n", KEY_EYE_CLOSE);
+  printf("%c - move eye farther\n", KEY_EYE_FAR);
+  printf("%c - spin eye faster\n", KEY_DELTAUP);
+  printf("%c - spin eye slower\n", KEY_DELTADOWN);
+  printf("%c - stop movement\n", KEY_STOP);
+  printf("%c - start movement\n", KEY_START);
+  printf("%c - move light up\n", KEY_LIGHT_UP);
+  printf("%c - move light down\n", KEY_LIGHT_DOWN);
+  printf("%c - move light closer\n", KEY_LIGHT_CLOSE);
+  printf("%c - move light farther\n", KEY_LIGHT_FAR);
+  printf("%c - move light right\n", KEY_LIGHT_LEFT);
+  printf("%c - move light left\n", KEY_LIGHT_RIGHT);
 }
 
 int
