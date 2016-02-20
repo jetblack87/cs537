@@ -1,0 +1,81 @@
+<html><head><title>Assignment 7</title></head>
+	
+<body>
+<h2>Interactive Computer Graphics: Assignment 7</h2>
+<h3>Bezier Patch</h3>
+</p><p>
+</p><p>
+Topics:
+</p><ul>
+<!--	<li>Bezier Curves: Drawing a cubic Bezier curve from a set of given control points</li> -->
+	<li>Bezier Patches: Drawing a bicubic Bezier patch from a set of given control points</li>
+	<li>Interaction: User has the ability to interactively change
+	the location of a control point and the resolution of the
+	patch tessellation</li>
+</ul>
+
+<p>
+
+Create a program that draws a smooth-shaded bicubic Bezier patch to
+the screen.
+<br>
+The initial control points for the patch are provided
+in a text file.<br>
+The file format will be 3 floating point numbers per
+line, with 16 lines.<br>
+X-Y Ordering: [0,0], [1,0], [2,0], [3,0], [0,1], [1,1], [2,1], etc.
+<p>
+Tessellate the patch into triangles and calculate a surface normal for
+each triangle vertex.<br>
+Initially the patch should be sampled with a
+10 x 10 resolution.
+<p>
+You will draw the patch and the control points (as GL_POINTS) for the
+patch.
+<p>
+Also draw the X, Y and Z axes.
+<p>
+INTERACTION:
+<p>
+The user should be able to change the view of the patch.
+<p>
+The user should have the capability to choose a control point to modify, 
+via keyboard interaction.
+<br>
+Change the color and/or size of the selected control point.
+<br>
+The user can then change the
+location of the selected point via 6 keyboard
+buttons (increase/decrease x/y/z position).
+<p>
+The user should be able to increase and decrease the sampling
+of the patch with a keyboard interaction.
+<p> 
+The user should also be able to switch between smooth (using the Phong
+model) and flat diffuse-only shading.
+</p><p>
+<a href="a7_files/patchPoints.txt">Link to Initial Control Points</a>
+<p>
+<a href="a7_files/bez_ptch.smf">Link to smf file of tessellated patch, so you can see what yours should look like</a>
+<p>
+<hr>
+<p>
+<h3>Grading Scheme</h3>
+  <ol>
+    <li> Reading in and storing control points (1 point)
+    <li> Tessellating patch (2 points)
+    <li> Smooth-shading (1 point)
+    <li> Drawing axes and control points (1 point)
+    <li> Changing view of patch (1 point)
+    <li> Selecting control point (1 point)
+    <li> Moving control point (1 point)
+    <li> Updating patch triangles (1 point)
+    <li> Modifying triangle resolution (1 point)
+    <li> Being able to switch to flat shading (1 point)
+  </ol>
+  <hr>
+  <p>
+Last modified February 17, 2016.
+
+</p><p>
+</p></body></html>

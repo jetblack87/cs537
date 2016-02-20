@@ -1,0 +1,90 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head>
+	<meta http-equiv="CONTENT-TYPE" content="text/html; charset=iso-8859-1"><title></title>
+	
+	<meta name="GENERATOR" content="OpenOffice.org 1.1.4  (Linux)">
+	<meta name="CREATED" content="20050620;12154300">
+	<meta name="CHANGED" content="20050713;14202800">
+	<style>
+	<!--
+		@page { size: 8.5in 11in; margin-left: 1.25in; margin-right: 1.25in; margin-top: 1in; margin-bottom: 1in }
+		P { margin-bottom: 0.08in }
+	-->
+	</style></head>
+
+<body dir="ltr" lang="en-US">
+<h2>Interactive Computer Graphics: Assignment 6</h2>
+<h3>Lighting, Materials, Gouraud and Phong Shading</h3>
+<p style="margin-bottom: 0in;"><br>
+</p>
+<p style="margin-bottom: 0in;">Topics:</p>
+<ul>
+      <li>Color: RGBA
+      </li><li>Phong shading model
+      </li><li>Gouraud and Phong shading algorithms
+      </li><li>Diffuse, specular and ambient coloring
+      </li><li>Specifying light sources
+      </li><li>Specifying materials
+      </li><li>Calculating interpolated normals
+      </li><li>World and camera coordinates</li>
+</ul>
+<p><br><br>
+</p>
+        <p>Extend your HW5 program.</p>
+<ol>
+	<!--
+        <li><p>Extend your HW5 program.</p>
+	<ol>
+	  <li>Provide rotating camera viewing capability
+	  <li>Allow the user to select either parallel or perspective projection.
+	</ol>
+	-->
+	</li><li><p>Average the normals for each face to create a normal for each vertex.</p>
+	</li><li><p>Implement the Phong shading model.</p>
+	</li><li><p>Illuminate your geometric model with at least two point lights.</p>
+	</li><li><p>Implement both Gouraud and Phong shading algorithms.</p>
+	</li><li><p>Allow the user to interactively select either Gouraud and Phong shading.</p>
+	</li><li><p>Allow the user to choose the material properties
+	of your model from a pre-defined list of at least three materials.<br>
+	The three materials should be significantly different, i.e. don't
+	just change the color. You should also change the shading properties.
+	Be sure that one of your materials produces a bright specular highlight.
+	</li><li><p>Similar to your camera, place one of your lights on a
+	cylinder around the object and allow the user to change the
+	light location by modifying the angle,  radius and
+	height of the light's location.<br>
+	The light should only move when the user
+	changes its location. This light should be defined in the coordinate
+	system of the object.
+	</li><li><p>The other light should be defined in the camera
+	coordinate system, i.e. it moves with the camera.
+<!--	<li>Create another version of your program that loads the smf file
+	into a vertex buffer object. Test both display list and VBO
+	versions with the bunny model with 69,451 faces.  Is there a
+	performance difference between the two versions?
+	</li> -->
+      </ol>
+
+smf files can be found <a href="http://www.cs.drexel.edu/~david/Classes/CS586/Models">here</a>.</p>
+<p>
+<h2><a href="../Movies/ICG_hw5.m4v">Movie of HW6 in action (sort of)</a></h2>
+  <p>
+  <p>
+<p>
+<hr>
+<p>
+<h3>Grading Scheme</h3>
+  <ol>
+    <li> Implementing multiple materials (1 point)
+    <li> Implementing Phong shading model (1 point)
+    <li> Implementing Phong shading algorithm (3 points)
+    <li> Implementing Gouraud shading algorithm (3 points)
+    <li> Allow the user to move one of the lights (1 point)
+    <li> Interface for selecting projections and materials, and
+    rotating light (1 point)
+  </ol>
+  <hr>
+  <p>
+  Last modified February 12, 2016.
+
+</body></html>
