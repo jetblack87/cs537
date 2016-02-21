@@ -276,9 +276,45 @@ keyboard( unsigned char key, int x, int y )
   case 'q': case 'Q': case 033 /* Escape key */:
     exit( EXIT_SUCCESS );
     break;
-  case 'a':
+  case 'X':
+    vertices[selected_control_vertex][X]++;
     init();
     glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'x':
+    vertices[selected_control_vertex][X]--;
+    init();
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'Y':
+    vertices[selected_control_vertex][Y]++;
+    init();
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'y':
+    vertices[selected_control_vertex][Y]--;
+    init();
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'Z':
+    vertices[selected_control_vertex][Z]++;
+    init();
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'z':
+    vertices[selected_control_vertex][Z]--;
+    init();
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'V':
+    selected_control_vertex++;
+    if (selected_control_vertex > NumControlVertices)
+      {selected_control_vertex = NumControlVertices;}
+    break;
+  case 'v':
+    selected_control_vertex--;
+    if (selected_control_vertex < 0)
+      {selected_control_vertex = 0;}
     break;
   }
 }
