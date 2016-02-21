@@ -10,7 +10,7 @@ bool debug = false;
 
 const char *TITLE = "mwa29 - CS537 assignment 7";
 
-const bool just_lines = true;
+const bool just_lines = false;
 
 int mainWindow;
 
@@ -42,6 +42,15 @@ enum { X = 0, Y = 1, Z = 2 };
 
 double t  = 0;
 double dt = 0.01;
+
+double translate_dt = 1.0;
+double translate_x  = 0.0;
+double translate_y  = 0.0;
+double translate_z  = 0.0;
+double rotate_dt    = 1.0;
+double rotate_x     = 0.0;
+double rotate_y     = 0.0;
+double rotate_z     = 0.0;
 
 //----------------------------------------------------------------------------
 
@@ -254,8 +263,12 @@ display( void )
 {
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   mat4 model_view = mat4(1.0);
-  model_view = model_view * RotateY(t);
-  model_view = model_view * RotateX(t);
+  model_view = model_view * Translate(translate_x,
+				      translate_y,
+				      translate_z);
+  model_view = model_view * RotateX(rotate_x);
+  model_view = model_view * RotateY(rotate_y);
+  model_view = model_view * RotateZ(rotate_z);
   glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
 
   reshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
@@ -273,8 +286,53 @@ void
 keyboard( unsigned char key, int x, int y )
 {
   switch ( key ) {
-  case 'q': case 'Q': case 033 /* Escape key */:
-    exit( EXIT_SUCCESS );
+  case 'q':
+    translate_x -= rotate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'Q':
+    translate_x += rotate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'w':
+    translate_y -= rotate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'W':
+    translate_y += rotate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'e':
+    translate_z -= rotate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'E':
+    translate_z += rotate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'a':
+    rotate_x -= translate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'A':
+    rotate_x += translate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 's':
+    rotate_y -= translate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'S':
+    rotate_y += translate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'd':
+    rotate_z -= translate_dt;
+    glutPostWindowRedisplay(mainWindow);
+    break;
+  case 'D':
+    rotate_z += translate_dt;
+    glutPostWindowRedisplay(mainWindow);
     break;
   case 'X':
     vertices[selected_control_vertex][X]++;
