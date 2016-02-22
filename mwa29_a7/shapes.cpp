@@ -197,8 +197,11 @@ init( void )
   }
 
   //  calculate_normals();
-  for (int i = 0; i < NumAxesPoints + NumControlVertices + NumVertices; i++) {
-    printf("[DEBUG] %f, %f, %f\n", normals[i].x, normals[i].y, normals[i].z);
+  if (debug) {
+    printf("Normals...\n");
+    for (int i = 0; i < NumAxesPoints + NumControlVertices + NumVertices; i++) {
+      printf("[DEBUG] %f, %f, %f\n", normals[i].x, normals[i].y, normals[i].z);
+    }
   }
 
   // Need vertices of size of vec4
