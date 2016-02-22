@@ -13,8 +13,8 @@ const char *TITLE = "mwa29 - CS537 assignment 7";
 const bool just_lines = false;
 
 int mainWindow;
-
-point4 axes_points[6] = {
+const int NumAxesPoints = 6;
+point4 axes_points[NumAxesPoints] = {
   point4( 10.0,0.0,0.0,1.0),
   point4(-10.0,0.0,0.0,1.0),
   point4(0.0, 10.0,0.0,1.0),
@@ -34,6 +34,8 @@ const int NumVertices = NumPatches*64*2*3;
 
 int     Index = 0;
 point4  points[NumVertices];
+int     NormalIndex = 0;
+vec3    normals[NumAxesPoints + NumControlVertices + NumVertices];
 
 GLuint  Projection;
 GLuint  ModelView;
@@ -42,15 +44,16 @@ enum { X = 0, Y = 1, Z = 2 };
 
 double t  = 0;
 double dt = 0.01;
+double control_point_dt = 0.1;
 
 double translate_dt = 1.0;
 double translate_x  = 0.0;
 double translate_y  = 0.0;
-double translate_z  = 0.0;
+double translate_z  = -13.0;
 double rotate_dt    = 1.0;
 double rotate_x     = 0.0;
 double rotate_y     = 0.0;
-double rotate_z     = 0.0;
+double rotate_z     = -180.0;
 
 //----------------------------------------------------------------------------
 
@@ -88,6 +91,15 @@ draw_patch( point4 p[4][4] )
   points[Index++] = p[0][0];
   points[Index++] = p[3][0];
   points[Index++] = p[3][3];
+  vec3  normal = normalize( cross(p[3][0] - p[0][0], p[3][3] - p[3][0]) );
+  normals[NormalIndex++] = normal;
+  normals[NormalIndex++] = normal;
+  normals[NormalIndex++] = normal;
+
+  normal = normalize( cross(p[3][3] - p[0][0], p[0][3] - p[3][3]) );
+  normals[NormalIndex++] = normal;
+  normals[NormalIndex++] = normal;
+  normals[NormalIndex++] = normal;
   points[Index++] = p[0][0];
   points[Index++] = p[3][3];
   points[Index++] = p[0][3];
@@ -141,10 +153,33 @@ divide_patch( point4 p[4][4], int count )
 
 //----------------------------------------------------------------------------
 
+// void
+// calculate_normals( void )
+// {
+//   int point_index = 0;
+//   for (int normal_index = NumAxesPoints + NumControlVertices;
+//        normal_index < NumAxesPoints + NumControlVertices + NumVertices;
+//        normal_index+=3) {
+//     point4 p0 = points[point_index++];
+//     point4 p1 = points[point_index++];
+//     point4 p2 = points[point_index++];
+
+//     vec4 u = p1 - p0;
+//     vec4 v = p2 - p1;
+
+//     vec3 normal = normalize( cross(u, v) );
+
+//     normals[normal_index]   = normal;
+//     normals[normal_index+1] = normal;
+//     normals[normal_index+2] = normal;
+//   }
+// }
+
 void
 init( void )
 {
   Index = 0;
+  NormalIndex = NumAxesPoints + NumControlVertices;
   for ( int n = 0; n < NumPatches; n++ ) {
     point4  patch[4][4];
 
@@ -161,6 +196,11 @@ init( void )
     divide_patch( patch, NumTimesToSubdivide );
   }
 
+  //  calculate_normals();
+  for (int i = 0; i < NumAxesPoints + NumControlVertices + NumVertices; i++) {
+    printf("[DEBUG] %f, %f, %f\n", normals[i].x, normals[i].y, normals[i].z);
+  }
+
   // Need vertices of size of vec4
   point4 control_points[NumControlVertices];
   for (int i = 0; i < NumControlVertices; i++) {
@@ -171,7 +211,7 @@ init( void )
 
   if (debug) {
     printf("[DEBUG] axes_points\n");
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < NumAxesPoints; i++) {
       printf("[DEBUG] %f %f %f\n", axes_points[i][X], axes_points[i][Y], axes_points[i][Z]);
     }
     printf("[DEBUG] control_points\n");
@@ -197,7 +237,8 @@ init( void )
   glBufferData( GL_ARRAY_BUFFER,
 		sizeof(axes_points) +
 		sizeof(control_points) +
-		sizeof(points),
+		sizeof(points) +
+		sizeof(normals),
 		NULL, GL_STATIC_DRAW );
 
   glBufferSubData(GL_ARRAY_BUFFER, 0,
@@ -206,9 +247,11 @@ init( void )
   		  sizeof(control_points), control_points);
   glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points),
   		  sizeof(points), points);
+  glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points) + sizeof(points),
+  		  sizeof(normals), normals);
 
   // Load shaders and use the resulting shader program
-  GLuint program = InitShader( "vshader101.glsl", "fshader101.glsl" );
+  GLuint program = InitShader( "vshader56.glsl", "fshader56.glsl" );
   glUseProgram( program );
 
   // set up vertex arrays
@@ -217,8 +260,44 @@ init( void )
   glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
 			 BUFFER_OFFSET(0) );
 
-  Projection = glGetUniformLocation( program, "Projection" );
+  GLuint vNormal = glGetAttribLocation( program, "vNormal" ); 
+  glEnableVertexAttribArray( vNormal );
+  glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
+			 BUFFER_OFFSET(sizeof(points)) );
+
+
+
+  // Initialize shader lighting parameters
+  point4 light_position( 0.0, 0.0, 2.0, 0.0 );
+  color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
+  color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
+  color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
+
+  color4 material_ambient( 1.0, 0.0, 1.0, 1.0 );
+  color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
+  color4 material_specular( 1.0, 0.0, 1.0, 1.0 );
+  float  material_shininess = 5.0;
+
+  color4 ambient_product = light_ambient * material_ambient;
+  color4 diffuse_product = light_diffuse * material_diffuse;
+  color4 specular_product = light_specular * material_specular;
+
+  glUniform4fv( glGetUniformLocation(program, "AmbientProduct"),
+		1, ambient_product );
+  glUniform4fv( glGetUniformLocation(program, "DiffuseProduct"),
+		1, diffuse_product );
+  glUniform4fv( glGetUniformLocation(program, "SpecularProduct"),
+		1, specular_product );
+	
+  glUniform4fv( glGetUniformLocation(program, "LightPosition"),
+		1, light_position );
+
+  glUniform1f( glGetUniformLocation(program, "Shininess"),
+	       material_shininess );
+
+
   ModelView = glGetUniformLocation( program, "ModelView" );
+  Projection = glGetUniformLocation( program, "Projection" );
 
   if (just_lines) {
     glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
@@ -252,7 +331,7 @@ reshape( int width, int height )
     top /= aspect;
   }
 
-  mat4 projection = Ortho( left, right, bottom, top, zNear, zFar );
+  mat4 projection = Frustum( left, right, bottom, top, zNear, zFar );
   glUniformMatrix4fv( Projection, 1, GL_TRUE, projection );
 }
 
@@ -273,9 +352,9 @@ display( void )
 
   reshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 
-  glDrawArrays( GL_LINES, 0, 6 );
-  glDrawArrays( GL_POINTS, 6, NumControlVertices );
-  glDrawArrays( GL_TRIANGLES, 6 + NumControlVertices, NumVertices );
+  glDrawArrays( GL_LINES, 0, NumAxesPoints );
+  glDrawArrays( GL_POINTS, NumAxesPoints, NumControlVertices );
+  glDrawArrays( GL_TRIANGLES, NumAxesPoints + NumControlVertices, NumVertices );
   glFlush();
   glutSwapBuffers();
 }
@@ -287,27 +366,28 @@ keyboard( unsigned char key, int x, int y )
 {
   switch ( key ) {
   case 'q':
-    translate_x -= rotate_dt;
+    translate_x -= translate_dt;
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'Q':
-    translate_x += rotate_dt;
+    translate_x += translate_dt;
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'w':
-    translate_y -= rotate_dt;
+    translate_y -= translate_dt;
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'W':
-    translate_y += rotate_dt;
+    translate_y += translate_dt;
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'e':
-    translate_z -= rotate_dt;
+    translate_z -= translate_dt;
+    printf("%f\n", translate_z);
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'E':
-    translate_z += rotate_dt;
+    translate_z += translate_dt;
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'a':
@@ -335,32 +415,32 @@ keyboard( unsigned char key, int x, int y )
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'X':
-    vertices[selected_control_vertex][X]++;
+    vertices[selected_control_vertex][X] += control_point_dt;
     init();
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'x':
-    vertices[selected_control_vertex][X]--;
+    vertices[selected_control_vertex][X] -= control_point_dt;
     init();
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'Y':
-    vertices[selected_control_vertex][Y]++;
+    vertices[selected_control_vertex][Y] += control_point_dt;
     init();
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'y':
-    vertices[selected_control_vertex][Y]--;
+    vertices[selected_control_vertex][Y] -= control_point_dt;
     init();
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'Z':
-    vertices[selected_control_vertex][Z]++;
+    vertices[selected_control_vertex][Z] += control_point_dt;
     init();
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'z':
-    vertices[selected_control_vertex][Z]--;
+    vertices[selected_control_vertex][Z] -= control_point_dt;
     init();
     glutPostWindowRedisplay(mainWindow);
     break;
