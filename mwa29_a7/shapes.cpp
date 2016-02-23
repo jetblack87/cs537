@@ -13,6 +13,10 @@ const char *TITLE = "mwa29 - CS537 assignment 7";
 const bool just_lines = false;
 
 int mainWindow;
+int menu;
+
+enum {FLAT_SHADING, SMOOTH_SHADING};
+
 const int NumAxesPoints = 6;
 point4 axes_points[NumAxesPoints] = {
   point4( 10.0,0.0,0.0,1.0),
@@ -30,7 +34,7 @@ point3 vertices[NumControlVertices];
 
 const int NumPatches = 1;
 const int NumTimesToSubdivide = 3;
-const int NumVertices = NumPatches*64*2*3;
+const int NumVertices = 6*pow(4, NumTimesToSubdivide);
 
 int     Index = 0;
 point4  points[NumVertices];
@@ -54,6 +58,8 @@ double rotate_dt    = 1.0;
 double rotate_x     = 0.0;
 double rotate_y     = 0.0;
 double rotate_z     = -180.0;
+
+int FlatShading = 0;
 
 //----------------------------------------------------------------------------
 
@@ -91,18 +97,18 @@ draw_patch( point4 p[4][4] )
   points[Index++] = p[0][0];
   points[Index++] = p[3][0];
   points[Index++] = p[3][3];
+  points[Index++] = p[0][0];
+  points[Index++] = p[3][3];
+  points[Index++] = p[0][3];
+
   vec3  normal = normalize( cross(p[3][0] - p[0][0], p[3][3] - p[3][0]) );
   normals[NormalIndex++] = normal;
   normals[NormalIndex++] = normal;
   normals[NormalIndex++] = normal;
-
   normal = normalize( cross(p[3][3] - p[0][0], p[0][3] - p[3][3]) );
   normals[NormalIndex++] = normal;
   normals[NormalIndex++] = normal;
   normals[NormalIndex++] = normal;
-  points[Index++] = p[0][0];
-  points[Index++] = p[3][3];
-  points[Index++] = p[0][3];
 }
 
 //----------------------------------------------------------------------------
@@ -276,9 +282,9 @@ init( void )
   color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
   color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
 
-  color4 material_ambient( 1.0, 0.0, 1.0, 1.0 );
+  color4 material_ambient( 1.0, 0.8, 1.0, 1.0 );
   color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
-  color4 material_specular( 1.0, 0.0, 1.0, 1.0 );
+  color4 material_specular( 1.0, 0.8, 1.0, 1.0 );
   float  material_shininess = 5.0;
 
   color4 ambient_product = light_ambient * material_ambient;
@@ -297,6 +303,9 @@ init( void )
 
   glUniform1f( glGetUniformLocation(program, "Shininess"),
 	       material_shininess );
+
+  glUniform1iv( glGetUniformLocation(program, "FlatShading"),
+		1, &FlatShading );
 
 
   ModelView = glGetUniformLocation( program, "ModelView" );
@@ -492,6 +501,24 @@ read_patchfile(const char *file_path)
   }
 }
 
+void
+processMenuEvents(int menuChoice)
+{
+  switch (menuChoice) {
+  case FLAT_SHADING: FlatShading = true; init(); glutPostWindowRedisplay(mainWindow); break;
+  case SMOOTH_SHADING: FlatShading = false; init(); glutPostWindowRedisplay(mainWindow); break;
+  }
+}
+
+void
+setupMenu ( void )
+{
+  glutCreateMenu(processMenuEvents);
+  glutAddMenuEntry("Flat Shading",    FLAT_SHADING);
+  glutAddMenuEntry("Smooth Shading",  SMOOTH_SHADING);
+  glutAttachMenu(GLUT_RIGHT_BUTTON);
+}
+
 int
 main( int argc, char *argv[] )
 {
@@ -509,6 +536,8 @@ main( int argc, char *argv[] )
     read_patchfile("models/patchPoints.txt");
   }
   init();
+
+  setupMenu();
 
   glutIdleFunc( myidle );
   glutDisplayFunc( display );

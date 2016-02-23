@@ -8,6 +8,8 @@ uniform mat4 ModelView;
 uniform vec4 LightPosition;
 uniform float Shininess;
 
+uniform bool FlatShading;
+
 void main() 
 { 
     // Normalize the input lighting vectors
@@ -30,7 +32,11 @@ void main()
 	specular = vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-    gl_FragColor = ambient + diffuse + specular;
+    if (FlatShading) {
+        gl_FragColor = diffuse;
+    } else {
+        gl_FragColor = ambient + diffuse + specular;
+    }
     gl_FragColor.a = 1.0;
 } 
 
