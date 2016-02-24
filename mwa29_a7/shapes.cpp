@@ -32,14 +32,13 @@ const int NumControlVertices = 16;
 int selected_control_vertex = 10;
 point3 vertices[NumControlVertices];
 
-const int NumPatches = 1;
-const int NumTimesToSubdivide = 3;
-const int NumVertices = NumPatches*6*pow(4, NumTimesToSubdivide);
+int NumPatches = 1;
+int NumTimesToSubdivide = 3;
+int NumVertices = NumPatches*6*pow(4, NumTimesToSubdivide);
+int NumNormals = NumAxesPoints + NumControlVertices + NumVertices;
 
-int     Index = 0;
-point4  points[NumVertices];
-int     NormalIndex = 0;
-vec3    normals[NumAxesPoints + NumControlVertices + NumVertices];
+std::vector<point4> points;
+std::vector<vec3> normals;
 
 GLuint  Projection;
 GLuint  ModelView;
@@ -94,21 +93,12 @@ draw_patch( point4 p[4][4] )
 {
   // Draw the quad (as two triangles) bounded by the corners of the
   //   Bezier patch.
-  points[Index++] = p[0][0];
-  points[Index++] = p[3][0];
-  points[Index++] = p[3][3];
-  points[Index++] = p[0][0];
-  points[Index++] = p[3][3];
-  points[Index++] = p[0][3];
-
-  // vec3  normal = normalize( cross(p[3][0] - p[0][0], p[3][3] - p[3][0]) );
-  // normals[NormalIndex++] = normal;
-  // normals[NormalIndex++] = normal;
-  // normals[NormalIndex++] = normal;
-  // normal = normalize( cross(p[3][3] - p[0][0], p[0][3] - p[3][3]) );
-  // normals[NormalIndex++] = normal;
-  // normals[NormalIndex++] = normal;
-  // normals[NormalIndex++] = normal;
+  points.push_back(p[0][0]);
+  points.push_back(p[3][0]);
+  points.push_back(p[3][3]);
+  points.push_back(p[0][0]);
+  points.push_back(p[3][3]);
+  points.push_back(p[0][3]);
 }
 
 //----------------------------------------------------------------------------
@@ -177,58 +167,28 @@ point_equals(point4 one, point4 two)
 void
 calculate_normals( void )
 {
-  //  if (FlatShading) {
-    int point_index = 0;
-    for (int normal_index = NumAxesPoints + NumControlVertices;
-	 normal_index < NumAxesPoints + NumControlVertices + NumVertices;
-	 normal_index+=3) {
-      point4 p0 = points[point_index++];
-      point4 p1 = points[point_index++];
-      point4 p2 = points[point_index++];
+  int point_index = 0;
+  for (int normal_index = NumAxesPoints + NumControlVertices;
+       normal_index < NumNormals;
+       normal_index+=3) {
+    point4 p0 = points[point_index++];
+    point4 p1 = points[point_index++];
+    point4 p2 = points[point_index++];
 
-      vec4 u = p1 - p0;
-      vec4 v = p2 - p1;
+    vec4 u = p1 - p0;
+    vec4 v = p2 - p1;
 
-      vec3 normal = normalize( cross(u, v) );
+    vec3 normal = normalize( cross(u, v) );
 
-      normals[normal_index]   = normal;
-      normals[normal_index+1] = normal;
-      normals[normal_index+2] = normal;
-    }
-  // } else {
-  //   for (int point_index = NumAxesPoints + NumControlVertices;
-  // 	 point_index < NumAxesPoints + NumControlVertices + NumVertices;
-  // 	 point_index++)
-  //     {
-  // 	point4 current_point = points[point_index];
-  // 	vec3 normal;
-
-  // 	for (int normal_index = NumAxesPoints + NumControlVertices;
-  // 	     normal_index < NumAxesPoints + NumControlVertices + NumVertices;
-  // 	     normal_index+=3) {
-  // 	  point4 p0 = points[normal_index];
-  // 	  point4 p1 = points[normal_index+1];
-  // 	  point4 p2 = points[normal_index+2];
-
-  // 	  if (point_equals(p0, current_point) ||
-  // 	      point_equals(p1, current_point) ||
-  // 	      point_equals(p2, current_point)) {
-  // 	    vec4 u = p1 - p0;
-  // 	    vec4 v = p2 - p1;
-  // 	    normal += normalize( cross(u, v) );
-  // 	  }
-  // 	}
-
-  // 	normals[point_index] = normalize(normal);
-  //     }
-  // }
+    normals.push_back(normal);
+    normals.push_back(normal);
+    normals.push_back(normal);
+  }
 }
 
 void
 init( void )
 {
-  Index = 0;
-  //NormalIndex = NumAxesPoints + NumControlVertices;
   for ( int n = 0; n < NumPatches; n++ ) {
     point4  patch[4][4];
 
@@ -246,12 +206,6 @@ init( void )
   }
 
   calculate_normals();
-  if (debug) {
-    printf("Normals...\n");
-    for (int i = 0; i < NumAxesPoints + NumControlVertices + NumVertices; i++) {
-      printf("[DEBUG] %f, %f, %f\n", normals[i].x, normals[i].y, normals[i].z);
-    }
-  }
 
   // Need vertices of size of vec4
   point4 control_points[NumControlVertices];
@@ -289,8 +243,8 @@ init( void )
   glBufferData( GL_ARRAY_BUFFER,
 		sizeof(axes_points) +
 		sizeof(control_points) +
-		sizeof(points) +
-		sizeof(normals),
+		(points.size()*sizeof(point4)) +
+		(normals.size()*sizeof(vec3)),
 		NULL, GL_STATIC_DRAW );
 
   glBufferSubData(GL_ARRAY_BUFFER, 0,
@@ -298,9 +252,9 @@ init( void )
   glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points),
 		  sizeof(control_points), control_points);
   glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points),
-		  sizeof(points), points);
-  glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points) + sizeof(points),
-		  sizeof(normals), normals);
+		  (points.size()*sizeof(point4)), &points[0]);
+  glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points) + (points.size()*sizeof(point4)),
+		  (normals.size()*sizeof(vec3)), &normals[0]);
 
   // Load shaders and use the resulting shader program
   GLuint program = InitShader( "vshader56.glsl", "fshader56.glsl" );
@@ -315,7 +269,7 @@ init( void )
   GLuint vNormal = glGetAttribLocation( program, "vNormal" );
   glEnableVertexAttribArray( vNormal );
   glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
-			 BUFFER_OFFSET(sizeof(points)) );
+			 BUFFER_OFFSET((points.size()*sizeof(point4))) );
 
 
 
@@ -419,6 +373,20 @@ display( void )
   glutSwapBuffers();
 }
 
+void
+alter_sampling(int delta) {
+  NumTimesToSubdivide += delta;
+  if (NumTimesToSubdivide == 0) {
+    NumTimesToSubdivide = 1;
+  }
+  NumVertices = NumPatches*6*pow(4, NumTimesToSubdivide);
+  NumNormals = NumAxesPoints + NumControlVertices + NumVertices;
+  points.clear();
+  normals.clear();
+  init();
+  glutPostWindowRedisplay(mainWindow);
+}
+
 //----------------------------------------------------------------------------
 
 void
@@ -512,6 +480,12 @@ keyboard( unsigned char key, int x, int y )
     selected_control_vertex--;
     if (selected_control_vertex < 0)
       {selected_control_vertex = 0;}
+    break;
+  case '+':
+    alter_sampling(1);
+    break;
+  case '-':
+    alter_sampling(-1);
     break;
   }
 }
