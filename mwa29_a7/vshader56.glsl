@@ -6,6 +6,7 @@ varying  vec3 fN;
 varying  vec3 fE;
 varying  vec3 fL;
 varying  vec4 color;
+varying  float SelectedControlPoint;
 
 uniform mat4 ModelView;
 uniform vec4 LightPosition;
@@ -32,4 +33,9 @@ void main()
     }
 
     gl_Position = Projection*ModelView*vPosition;
+    if (vPosition.w == 1.2345) {
+      SelectedControlPoint = 1.0;
+    } else {
+      SelectedControlPoint = 0.0;
+    }
 }

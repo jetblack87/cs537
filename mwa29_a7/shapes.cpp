@@ -28,8 +28,8 @@ point4 axes_points[NumAxesPoints] = {
 };
 
 const int NumControlVertices = 16;
-
 int selected_control_vertex = 10;
+
 point3 vertices[NumControlVertices];
 
 int NumPatches = 1;
@@ -189,6 +189,11 @@ calculate_normals( void )
 void
 init( void )
 {
+  NumVertices = NumPatches*6*pow(4, NumTimesToSubdivide);
+  NumNormals = NumAxesPoints + NumControlVertices + NumVertices;
+  points.clear();
+  normals.clear();
+
   for ( int n = 0; n < NumPatches; n++ ) {
     point4  patch[4][4];
 
@@ -210,9 +215,13 @@ init( void )
   // Need vertices of size of vec4
   point4 control_points[NumControlVertices];
   for (int i = 0; i < NumControlVertices; i++) {
+    int w = 1.0;
+    if (i == selected_control_vertex) {
+      w = 1.2345;
+    }
     control_points[i] = vec4(vertices[i][X],
 			     vertices[i][Y],
-			     vertices[i][Z], 1.0);
+			     vertices[i][Z], w);
   }
 
   if (debug) {
@@ -320,7 +329,7 @@ init( void )
     glShadeModel(GL_FLAT);
   }
 
-  glClearColor( 1.0, 1.0, 1.0, 1.0 );
+  glClearColor( 0.5, 0.5, 0.5, 1.0 );
 }
 
 //----------------------------------------------------------------------------
@@ -379,10 +388,6 @@ alter_sampling(int delta) {
   if (NumTimesToSubdivide == 0) {
     NumTimesToSubdivide = 1;
   }
-  NumVertices = NumPatches*6*pow(4, NumTimesToSubdivide);
-  NumNormals = NumAxesPoints + NumControlVertices + NumVertices;
-  points.clear();
-  normals.clear();
   init();
   glutPostWindowRedisplay(mainWindow);
 }
@@ -475,11 +480,15 @@ keyboard( unsigned char key, int x, int y )
     selected_control_vertex++;
     if (selected_control_vertex > NumControlVertices)
       {selected_control_vertex = NumControlVertices;}
+    init();
+    glutPostWindowRedisplay(mainWindow);
     break;
   case 'v':
     selected_control_vertex--;
     if (selected_control_vertex < 0)
       {selected_control_vertex = 0;}
+    init();
+    glutPostWindowRedisplay(mainWindow);
     break;
   case '+':
     alter_sampling(1);
@@ -540,6 +549,24 @@ setupMenu ( void )
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
+void printHelp ( void )
+{
+  printf("%s\n", TITLE);
+  printf("Use right-click menu to change shading.\n");
+  printf("Keyboard options:\n");
+  printf("%c/%c - translate model in x direction\n", 'q', 'Q');
+  printf("%c/%c - translate model in y direction\n", 'w', 'W');
+  printf("%c/%c - translate model in z direction\n", 'e', 'E');
+  printf("%c/%c - rotate around the x axes\n", 'a', 'A');
+  printf("%c/%c - rotate around the y axes\n", 's', 'S');
+  printf("%c/%c - rotate around the z axes\n", 'd', 'D');
+  printf("%c/%c - move control vertex in the x direction\n", 'x', 'X');
+  printf("%c/%c - move control vertex in the y direction\n", 'y', 'Y');
+  printf("%c/%c - move control vertex in the z direction\n", 'z', 'Z');
+  printf("%c/%c - change selected control vertex\n", 'v', 'V');
+  printf("%c/%c - increase/decrease sample size\n", '+', '-');
+}
+
 int
 main( int argc, char *argv[] )
 {
@@ -567,6 +594,9 @@ main( int argc, char *argv[] )
 
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_PROGRAM_POINT_SIZE);
+
+  printHelp();
+
   glutMainLoop();
   return 0;
 }
