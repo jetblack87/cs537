@@ -11,6 +11,8 @@ uniform float Shininess;
 
 uniform bool FlatShading;
 
+uniform float SelectedControlPoint;
+
 void main() 
 { 
     // Normalize the input lighting vectors
@@ -33,10 +35,14 @@ void main()
 	specular = vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-    if (FlatShading) {
+    if (SelectedControlPoint == 0.0) {
+      if (FlatShading) {
         gl_FragColor = color;
-    } else {
+      } else {
         gl_FragColor = ambient + diffuse + specular;
+      }
+    } else {
+      gl_FragColor = vec4(1.0,0.0,0.0,1.0);
     }
     gl_FragColor.a = 1.0;
 } 
