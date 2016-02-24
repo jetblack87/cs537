@@ -1,5 +1,5 @@
-
 #include "Angel.h"
+#include <vector>
 
 typedef Angel::vec4 point4;
 typedef Angel::vec4 color4;
@@ -34,7 +34,7 @@ point3 vertices[NumControlVertices];
 
 const int NumPatches = 1;
 const int NumTimesToSubdivide = 3;
-const int NumVertices = 6*pow(4, NumTimesToSubdivide);
+const int NumVertices = NumPatches*6*pow(4, NumTimesToSubdivide);
 
 int     Index = 0;
 point4  points[NumVertices];
@@ -80,7 +80,7 @@ divide_curve( point4 c[4], point4 r[4], point4 l[4] )
   r[1] = ( mid + r[2] ) / 2;
 
   l[3] = r[0] = ( l[2] + r[1] ) / 2;
-    
+
   for ( int i = 0; i < 4; ++i ) {
     l[i].w = 1.0;
     r[i].w = 1.0;
@@ -101,14 +101,14 @@ draw_patch( point4 p[4][4] )
   points[Index++] = p[3][3];
   points[Index++] = p[0][3];
 
-  vec3  normal = normalize( cross(p[3][0] - p[0][0], p[3][3] - p[3][0]) );
-  normals[NormalIndex++] = normal;
-  normals[NormalIndex++] = normal;
-  normals[NormalIndex++] = normal;
-  normal = normalize( cross(p[3][3] - p[0][0], p[0][3] - p[3][3]) );
-  normals[NormalIndex++] = normal;
-  normals[NormalIndex++] = normal;
-  normals[NormalIndex++] = normal;
+  // vec3  normal = normalize( cross(p[3][0] - p[0][0], p[3][3] - p[3][0]) );
+  // normals[NormalIndex++] = normal;
+  // normals[NormalIndex++] = normal;
+  // normals[NormalIndex++] = normal;
+  // normal = normalize( cross(p[3][3] - p[0][0], p[0][3] - p[3][3]) );
+  // normals[NormalIndex++] = normal;
+  // normals[NormalIndex++] = normal;
+  // normals[NormalIndex++] = normal;
 }
 
 //----------------------------------------------------------------------------
@@ -159,33 +159,76 @@ divide_patch( point4 p[4][4], int count )
 
 //----------------------------------------------------------------------------
 
-// void
-// calculate_normals( void )
-// {
-//   int point_index = 0;
-//   for (int normal_index = NumAxesPoints + NumControlVertices;
-//        normal_index < NumAxesPoints + NumControlVertices + NumVertices;
-//        normal_index+=3) {
-//     point4 p0 = points[point_index++];
-//     point4 p1 = points[point_index++];
-//     point4 p2 = points[point_index++];
+bool
+double_equals(double a, double b)
+{
+double epsilon = 0.001;
+return fabs(a - b) < epsilon;
+}
 
-//     vec4 u = p1 - p0;
-//     vec4 v = p2 - p1;
+bool
+point_equals(point4 one, point4 two)
+{
+  return double_equals(one.x, two.x)
+    && double_equals(one.y, two.y)
+    && double_equals(one.z, two.z);
+}
 
-//     vec3 normal = normalize( cross(u, v) );
+void
+calculate_normals( void )
+{
+  //  if (FlatShading) {
+    int point_index = 0;
+    for (int normal_index = NumAxesPoints + NumControlVertices;
+	 normal_index < NumAxesPoints + NumControlVertices + NumVertices;
+	 normal_index+=3) {
+      point4 p0 = points[point_index++];
+      point4 p1 = points[point_index++];
+      point4 p2 = points[point_index++];
 
-//     normals[normal_index]   = normal;
-//     normals[normal_index+1] = normal;
-//     normals[normal_index+2] = normal;
-//   }
-// }
+      vec4 u = p1 - p0;
+      vec4 v = p2 - p1;
+
+      vec3 normal = normalize( cross(u, v) );
+
+      normals[normal_index]   = normal;
+      normals[normal_index+1] = normal;
+      normals[normal_index+2] = normal;
+    }
+  // } else {
+  //   for (int point_index = NumAxesPoints + NumControlVertices;
+  // 	 point_index < NumAxesPoints + NumControlVertices + NumVertices;
+  // 	 point_index++)
+  //     {
+  // 	point4 current_point = points[point_index];
+  // 	vec3 normal;
+
+  // 	for (int normal_index = NumAxesPoints + NumControlVertices;
+  // 	     normal_index < NumAxesPoints + NumControlVertices + NumVertices;
+  // 	     normal_index+=3) {
+  // 	  point4 p0 = points[normal_index];
+  // 	  point4 p1 = points[normal_index+1];
+  // 	  point4 p2 = points[normal_index+2];
+
+  // 	  if (point_equals(p0, current_point) ||
+  // 	      point_equals(p1, current_point) ||
+  // 	      point_equals(p2, current_point)) {
+  // 	    vec4 u = p1 - p0;
+  // 	    vec4 v = p2 - p1;
+  // 	    normal += normalize( cross(u, v) );
+  // 	  }
+  // 	}
+
+  // 	normals[point_index] = normalize(normal);
+  //     }
+  // }
+}
 
 void
 init( void )
 {
   Index = 0;
-  NormalIndex = NumAxesPoints + NumControlVertices;
+  //NormalIndex = NumAxesPoints + NumControlVertices;
   for ( int n = 0; n < NumPatches; n++ ) {
     point4  patch[4][4];
 
@@ -202,7 +245,7 @@ init( void )
     divide_patch( patch, NumTimesToSubdivide );
   }
 
-  //  calculate_normals();
+  calculate_normals();
   if (debug) {
     printf("Normals...\n");
     for (int i = 0; i < NumAxesPoints + NumControlVertices + NumVertices; i++) {
@@ -253,11 +296,11 @@ init( void )
   glBufferSubData(GL_ARRAY_BUFFER, 0,
 		  sizeof(axes_points), axes_points);
   glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points),
-  		  sizeof(control_points), control_points);
+		  sizeof(control_points), control_points);
   glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points),
-  		  sizeof(points), points);
+		  sizeof(points), points);
   glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points) + sizeof(points),
-  		  sizeof(normals), normals);
+		  sizeof(normals), normals);
 
   // Load shaders and use the resulting shader program
   GLuint program = InitShader( "vshader56.glsl", "fshader56.glsl" );
@@ -269,7 +312,7 @@ init( void )
   glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
 			 BUFFER_OFFSET(0) );
 
-  GLuint vNormal = glGetAttribLocation( program, "vNormal" ); 
+  GLuint vNormal = glGetAttribLocation( program, "vNormal" );
   glEnableVertexAttribArray( vNormal );
   glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
 			 BUFFER_OFFSET(sizeof(points)) );
@@ -297,9 +340,14 @@ init( void )
 		1, diffuse_product );
   glUniform4fv( glGetUniformLocation(program, "SpecularProduct"),
 		1, specular_product );
-	
+
   glUniform4fv( glGetUniformLocation(program, "LightPosition"),
 		1, light_position );
+
+  glUniform4fv( glGetUniformLocation(program, "MaterialDiffuse"),
+		1, material_diffuse );
+  glUniform4fv( glGetUniformLocation(program, "LightDiffuse"),
+		1, light_diffuse );
 
   glUniform1f( glGetUniformLocation(program, "Shininess"),
 	       material_shininess );
@@ -395,7 +443,6 @@ keyboard( unsigned char key, int x, int y )
     break;
   case 'e':
     translate_z -= translate_dt;
-    printf("%f\n", translate_z);
     glutPostWindowRedisplay(mainWindow);
     break;
   case 'E':
@@ -544,7 +591,6 @@ main( int argc, char *argv[] )
   glutReshapeFunc( reshape );
   glutKeyboardFunc( keyboard );
 
-  glPointSize(5.0);
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_PROGRAM_POINT_SIZE);
   glutMainLoop();

@@ -2,6 +2,7 @@
 varying  vec3 fN;
 varying  vec3 fL;
 varying  vec3 fE;
+varying  vec4 color;
 
 uniform vec4 AmbientProduct, DiffuseProduct, SpecularProduct;
 uniform mat4 ModelView;
@@ -33,7 +34,7 @@ void main()
     }
 
     if (FlatShading) {
-        gl_FragColor = diffuse;
+        gl_FragColor = color;
     } else {
         gl_FragColor = ambient + diffuse + specular;
     }
