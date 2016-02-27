@@ -5,15 +5,10 @@ attribute   vec3 vNormal;
 varying  vec3 fN;
 varying  vec3 fE;
 varying  vec3 fL;
-varying  vec4 color;
-varying  float SelectedControlPoint;
 
 uniform mat4 ModelView;
 uniform vec4 LightPosition;
 uniform mat4 Projection;
-uniform bool FlatShading;
-uniform vec4 MaterialDiffuse;
-uniform vec4 LightDiffuse;
 
 void main()
 {
@@ -25,17 +20,5 @@ void main()
 	fL = LightPosition.xyz - vPosition.xyz;
     }
 
-    if (FlatShading) {
-        color = (MaterialDiffuse * LightDiffuse *
-                           max(dot(vec4(vNormal,1.0),
-                                   normalize(LightPosition)),
-                               0.0));
-    }
-
     gl_Position = Projection*ModelView*vPosition;
-    if (vPosition.w == 1.2345) {
-      SelectedControlPoint = 1.0;
-    } else {
-      SelectedControlPoint = 0.0;
-    }
 }

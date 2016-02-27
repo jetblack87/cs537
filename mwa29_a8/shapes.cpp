@@ -1,297 +1,195 @@
+// fragment shading of sphere model
+
 #include "Angel.h"
-#include <vector>
+
+const int NumShapes           = 3;
+const int NumTimesToSubdivide = 5;
+const int NumTriangles        = 4096;  // (4 faces)^(NumTimesToSubdivide + 1)
+const int NumVertices         = 3 * NumTriangles;
 
 typedef Angel::vec4 point4;
 typedef Angel::vec4 color4;
 
-typedef GLfloat     point3[3];
+enum material {BRASS, RED_PLASTIC, GREEN_RUBBER};
 
-bool debug = false;
+const color4 BRASS_AMBIENT(0.329412, 0.223529, 0.027451, 1.0);
+const color4 BRASS_DIFFUSE(0.780392, 0.568627, 0.113725, 1.0);
+const color4 BRASS_SPECULAR(0.992157, 0.941176, 0.807843, 1.0);
+const float  BRASS_SHININESS = 0.21794872;
 
-const char *TITLE = "mwa29 - CS537 assignment 7";
+const color4 RED_PLASTIC_AMBIENT(0.0, 0.0, 0.0, 1.0);
+const color4 RED_PLASTIC_DIFFUSE(0.5, 0.0, 0.0, 1.0);
+const color4 RED_PLASTIC_SPECULAR(0.7, 0.6, 0.6, 1.0);
+const float  RED_PLASTIC_SHININESS = 0.25;
 
-const bool just_lines = false;
+const color4 GREEN_RUBBER_AMBIENT(0.0, 0.05, 0.0, 1.0);
+const color4 GREEN_RUBBER_DIFFUSE(0.4, 0.5, 0.4, 1.0);
+const color4 GREEN_RUBBER_SPECULAR(0.04, 0.7, 0.04, 1.0);
+const float  GREEN_RUBBER_SHININESS = 0.078125;
+
+GLuint program;
 
 int mainWindow;
 int menu;
 
-enum {FLAT_SHADING, SMOOTH_SHADING};
+point4 points[NumVertices];
+vec3   normals[NumVertices];
 
-const int NumAxesPoints = 6;
-point4 axes_points[NumAxesPoints] = {
-  point4( 10.0,0.0,0.0,1.0),
-  point4(-10.0,0.0,0.0,1.0),
-  point4(0.0, 10.0,0.0,1.0),
-  point4(0.0,-10.0,0.0,1.0),
-  point4(0.0,0.0, 10.0,1.0),
-  point4(0.0,0.0,-10.0,1.0),
-};
-
-const int NumControlVertices = 16;
-int selected_control_vertex = 10;
-
-point3 vertices[NumControlVertices];
-
-int NumPatches = 1;
-int NumTimesToSubdivide = 3;
-int NumVertices = NumPatches*6*pow(4, NumTimesToSubdivide);
-int NumNormals = NumAxesPoints + NumControlVertices + NumVertices;
-
-std::vector<point4> points;
-std::vector<vec3> normals;
-
-GLuint  Projection;
-GLuint  ModelView;
-
-enum { X = 0, Y = 1, Z = 2 };
-
-double t  = 0;
-double dt = 0.01;
-double control_point_dt = 0.1;
-
-double translate_dt = 1.0;
-double translate_x  = 0.0;
-double translate_y  = 0.0;
-double translate_z  = -13.0;
 double rotate_dt    = 1.0;
 double rotate_x     = 0.0;
 double rotate_y     = 0.0;
-double rotate_z     = -180.0;
+double rotate_z     = 0.0;
 
-int FlatShading = 0;
+// Model-view and projection matrices uniform location
+GLuint  ModelView, Projection;
 
 //----------------------------------------------------------------------------
 
+int Index = 0;
+
 void
-divide_curve( point4 c[4], point4 r[4], point4 l[4] )
+triangle( const point4& a, const point4& b, const point4& c )
 {
-  // Subdivide a Bezier curve into two equaivalent Bezier curves:
-  //   left (l) and right (r) sharing the midpoint of the middle
-  //   control point
-  point4  t, mid = ( c[1] + c[2] ) / 2;
+    vec3  normal = normalize( cross(b - a, c - b) );
 
-  l[0] = c[0];
-  l[1] = ( c[0] + c[1] ) / 2;
-  l[2] = ( l[1] + mid ) / 2;
-
-  r[3] = c[3];
-  r[2] = ( c[2] + c[3] ) / 2;
-  r[1] = ( mid + r[2] ) / 2;
-
-  l[3] = r[0] = ( l[2] + r[1] ) / 2;
-
-  for ( int i = 0; i < 4; ++i ) {
-    l[i].w = 1.0;
-    r[i].w = 1.0;
-  }
+    normals[Index] = normal;  points[Index] = a;  Index++;
+    normals[Index] = normal;  points[Index] = b;  Index++;
+    normals[Index] = normal;  points[Index] = c;  Index++;
 }
 
 //----------------------------------------------------------------------------
 
-void
-draw_patch( point4 p[4][4] )
+point4
+unit( const point4& p )
 {
-  // Draw the quad (as two triangles) bounded by the corners of the
-  //   Bezier patch.
-  points.push_back(p[0][0]);
-  points.push_back(p[3][0]);
-  points.push_back(p[3][3]);
-  points.push_back(p[0][0]);
-  points.push_back(p[3][3]);
-  points.push_back(p[0][3]);
+    float len = p.x*p.x + p.y*p.y + p.z*p.z;
+    
+    point4 t;
+    if ( len > DivideByZeroTolerance ) {
+	t = p / sqrt(len);
+	t.w = 1.0;
+    }
+
+    return t;
+}
+
+void
+divide_triangle( const point4& a, const point4& b,
+		 const point4& c, int count )
+{
+    if ( count > 0 ) {
+        point4 v1 = unit( a + b );
+        point4 v2 = unit( a + c );
+        point4 v3 = unit( b + c );
+        divide_triangle(  a, v1, v2, count - 1 );
+        divide_triangle(  c, v2, v3, count - 1 );
+        divide_triangle(  b, v3, v1, count - 1 );
+        divide_triangle( v1, v3, v2, count - 1 );
+    }
+    else {
+        triangle( a, b, c );
+    }
+}
+
+void
+tetrahedron( int count )
+{
+    point4 v[4] = {
+	vec4( 0.0, 0.0, 1.0, 1.0 ),
+	vec4( 0.0, 0.942809, -0.333333, 1.0 ),
+	vec4( -0.816497, -0.471405, -0.333333, 1.0 ),
+	vec4( 0.816497, -0.471405, -0.333333, 1.0 )
+    };
+
+    divide_triangle( v[0], v[1], v[2], count );
+    divide_triangle( v[3], v[2], v[1], count );
+    divide_triangle( v[0], v[3], v[1], count );
+    divide_triangle( v[0], v[2], v[3], count );
 }
 
 //----------------------------------------------------------------------------
 
-inline void
-transpose( point4 a[4][4] )
-{
-  for ( int i = 0; i < 4; i++ ) {
-    for ( int j = i; j < 4; j++ ) {
-      point4 t = a[i][j];
-      a[i][j] = a[j][i];
-      a[j][i] = t;
-    }
-  }
-}
-
+// OpenGL initialization
 void
-divide_patch( point4 p[4][4], int count )
+init()
 {
-  if ( count > 0 ) {
-    point4 q[4][4], r[4][4], s[4][4], t[4][4];
-    point4 a[4][4], b[4][4];
+    // Subdivide a tetrahedron into a sphere
+    tetrahedron( NumTimesToSubdivide );
 
-    // subdivide curves in u direction, transpose results, divide
-    // in u direction again (equivalent to subdivision in v)
-    for ( int k = 0; k < 4; ++k ) {
-      divide_curve( p[k], a[k], b[k] );
-    }
+    // Create a vertex array object
+    GLuint vao;
+    glGenVertexArraysAPPLE( 1, &vao );
+    glBindVertexArrayAPPLE( vao );
 
-    transpose( a );
-    transpose( b );
+    // Create and initialize a buffer object
+    GLuint buffer;
+    glGenBuffers( 1, &buffer );
+    glBindBuffer( GL_ARRAY_BUFFER, buffer );
+    glBufferData( GL_ARRAY_BUFFER, NumShapes*(sizeof(points) + sizeof(normals)),
+		  NULL, GL_STATIC_DRAW );
+    glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(points), points );
+    glBufferSubData( GL_ARRAY_BUFFER, sizeof(points),
+		     sizeof(normals), normals );
+    glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(points), points );
+    glBufferSubData( GL_ARRAY_BUFFER, sizeof(points),
+		     sizeof(normals), normals );
 
-    for ( int k = 0; k < 4; ++k ) {
-      divide_curve( a[k], q[k], r[k] );
-      divide_curve( b[k], s[k], t[k] );
-    }
+    // Load shaders and use the resulting shader program
+    glUseProgram( program );
+	
+    // set up vertex arrays
+    GLuint vPosition = glGetAttribLocation( program, "vPosition" );
+    glEnableVertexAttribArray( vPosition );
+    glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
+			   BUFFER_OFFSET(0) );
 
-    // recursive division of 4 resulting patches
-    divide_patch( q, count - 1 );
-    divide_patch( r, count - 1 );
-    divide_patch( s, count - 1 );
-    divide_patch( t, count - 1 );
-  }
-  else {
-    draw_patch( p );
-  }
+    GLuint vNormal = glGetAttribLocation( program, "vNormal" ); 
+    glEnableVertexAttribArray( vNormal );
+    glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
+			   BUFFER_OFFSET(sizeof(points)) );
+
+
+    // Retrieve transformation uniform variable locations
+    ModelView = glGetUniformLocation( program, "ModelView" );
+    Projection = glGetUniformLocation( program, "Projection" );
+    
+    glEnable( GL_DEPTH_TEST );
+    
+    glClearColor( 1.0, 1.0, 1.0, 1.0 ); /* white background */
 }
 
 //----------------------------------------------------------------------------
 
-bool
-double_equals(double a, double b)
-{
-double epsilon = 0.001;
-return fabs(a - b) < epsilon;
-}
-
-bool
-point_equals(point4 one, point4 two)
-{
-  return double_equals(one.x, two.x)
-    && double_equals(one.y, two.y)
-    && double_equals(one.z, two.z);
-}
-
 void
-calculate_normals( void )
+set_material (material mat)
 {
-  int point_index = 0;
-  for (int normal_index = NumAxesPoints + NumControlVertices;
-       normal_index < NumNormals;
-       normal_index+=3) {
-    point4 p0 = points[point_index++];
-    point4 p1 = points[point_index++];
-    point4 p2 = points[point_index++];
-
-    vec4 u = p1 - p0;
-    vec4 v = p2 - p1;
-
-    vec3 normal = normalize( cross(u, v) );
-
-    normals.push_back(normal);
-    normals.push_back(normal);
-    normals.push_back(normal);
-  }
-}
-
-void
-init( void )
-{
-  NumVertices = NumPatches*6*pow(4, NumTimesToSubdivide);
-  NumNormals = NumAxesPoints + NumControlVertices + NumVertices;
-  points.clear();
-  normals.clear();
-
-  for ( int n = 0; n < NumPatches; n++ ) {
-    point4  patch[4][4];
-
-    // Initialize each patch's control point data
-    int index = 0;
-    for ( int i = 0; i < 4; ++i ) {
-      for ( int j = 0; j < 4; ++j ) {
-	point3& v = vertices[index++];
-	patch[i][j] = point4( v[X], v[Y], v[Z], 1.0 );
-      }
-    }
-
-    // Subdivide the patch
-    divide_patch( patch, NumTimesToSubdivide );
-  }
-
-  calculate_normals();
-
-  // Need vertices of size of vec4
-  point4 control_points[NumControlVertices];
-  for (int i = 0; i < NumControlVertices; i++) {
-    int w = 1.0;
-    if (i == selected_control_vertex) {
-      w = 1.2345;
-    }
-    control_points[i] = vec4(vertices[i][X],
-			     vertices[i][Y],
-			     vertices[i][Z], w);
-  }
-
-  if (debug) {
-    printf("[DEBUG] axes_points\n");
-    for (int i = 0; i < NumAxesPoints; i++) {
-      printf("[DEBUG] %f %f %f\n", axes_points[i][X], axes_points[i][Y], axes_points[i][Z]);
-    }
-    printf("[DEBUG] control_points\n");
-    for (int i = 0; i < NumControlVertices; i++) {
-      printf("[DEBUG] %f %f %f\n", control_points[i][X], control_points[i][Y], control_points[i][Z]);
-    }
-    printf("[DEBUG] points\n");
-    for (int i = 0; i < NumVertices; i++) {
-      printf("[DEBUG] %f %f %f\n", points[i][X], points[i][Y], points[i][Z]);
-    }
-  }
-
-
-  // Create a vertex array object
-  GLuint vao[1];
-  glGenVertexArrays( 1, vao );
-  glBindVertexArray( vao[0] );
-
-  // Create and initialize a buffer object
-  GLuint buffer;
-  glGenBuffers( 1, &buffer );
-  glBindBuffer( GL_ARRAY_BUFFER, buffer );
-  glBufferData( GL_ARRAY_BUFFER,
-		sizeof(axes_points) +
-		sizeof(control_points) +
-		(points.size()*sizeof(point4)) +
-		(normals.size()*sizeof(vec3)),
-		NULL, GL_STATIC_DRAW );
-
-  glBufferSubData(GL_ARRAY_BUFFER, 0,
-		  sizeof(axes_points), axes_points);
-  glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points),
-		  sizeof(control_points), control_points);
-  glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points),
-		  (points.size()*sizeof(point4)), &points[0]);
-  glBufferSubData(GL_ARRAY_BUFFER, sizeof(axes_points) +  sizeof(control_points) + (points.size()*sizeof(point4)),
-		  (normals.size()*sizeof(vec3)), &normals[0]);
-
-  // Load shaders and use the resulting shader program
-  GLuint program = InitShader( "vshader56.glsl", "fshader56.glsl" );
-  glUseProgram( program );
-
-  // set up vertex arrays
-  GLuint vPosition = glGetAttribLocation( program, "vPosition" );
-  glEnableVertexAttribArray( vPosition );
-  glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
-			 BUFFER_OFFSET(0) );
-
-  GLuint vNormal = glGetAttribLocation( program, "vNormal" );
-  glEnableVertexAttribArray( vNormal );
-  glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
-			 BUFFER_OFFSET((points.size()*sizeof(point4))) );
-
-
-
-  // Initialize shader lighting parameters
-  point4 light_position( 0.0, 0.0, 2.0, 0.0 );
   color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
   color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
   color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
-
-  color4 material_ambient( 1.0, 0.8, 1.0, 1.0 );
-  color4 material_diffuse( 1.0, 0.8, 0.0, 1.0 );
-  color4 material_specular( 1.0, 0.8, 1.0, 1.0 );
-  float  material_shininess = 5.0;
+  color4 material_ambient;
+  color4 material_diffuse;
+  color4 material_specular;
+  float  material_shininess;
+  switch (mat) {
+  case BRASS:
+    material_ambient   = BRASS_AMBIENT;
+    material_diffuse   = BRASS_DIFFUSE;
+    material_specular  = BRASS_SPECULAR;
+    material_shininess = BRASS_SHININESS;
+    break;
+  case RED_PLASTIC:
+    material_ambient   = RED_PLASTIC_AMBIENT;
+    material_diffuse   = RED_PLASTIC_DIFFUSE;
+    material_specular  = RED_PLASTIC_SPECULAR;
+    material_shininess = RED_PLASTIC_SHININESS;
+    break;
+  case GREEN_RUBBER:
+    material_ambient   = GREEN_RUBBER_AMBIENT;
+    material_diffuse   = GREEN_RUBBER_DIFFUSE;
+    material_specular  = GREEN_RUBBER_SPECULAR;
+    material_shininess = GREEN_RUBBER_SHININESS;
+    break;
+  }
 
   color4 ambient_product = light_ambient * material_ambient;
   color4 diffuse_product = light_diffuse * material_diffuse;
@@ -303,93 +201,54 @@ init( void )
 		1, diffuse_product );
   glUniform4fv( glGetUniformLocation(program, "SpecularProduct"),
 		1, specular_product );
-
-  glUniform4fv( glGetUniformLocation(program, "LightPosition"),
-		1, light_position );
-
-  glUniform4fv( glGetUniformLocation(program, "MaterialDiffuse"),
-		1, material_diffuse );
-  glUniform4fv( glGetUniformLocation(program, "LightDiffuse"),
-		1, light_diffuse );
-
+	
   glUniform1f( glGetUniformLocation(program, "Shininess"),
 	       material_shininess );
-
-  glUniform1iv( glGetUniformLocation(program, "FlatShading"),
-		1, &FlatShading );
-
-
-  ModelView = glGetUniformLocation( program, "ModelView" );
-  Projection = glGetUniformLocation( program, "Projection" );
-
-  if (just_lines) {
-    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-  } else {
-    glEnable( GL_DEPTH_TEST );
-    glShadeModel(GL_FLAT);
-  }
-
-  glClearColor( 0.5, 0.5, 0.5, 1.0 );
 }
 
-//----------------------------------------------------------------------------
-
-void
-reshape( int width, int height )
-{
-  glViewport( 0, 0, width, height );
-
-  GLfloat  left = -4.0, right = 4.0;
-  GLfloat  bottom = -3.0, top = 5.0;
-  GLfloat  zNear = -10.0, zFar = 10.0;
-
-  GLfloat  aspect = GLfloat(width)/height;
-
-  if ( aspect > 0 ) {
-    left *= aspect;
-    right *= aspect;
-  }
-  else {
-    bottom /= aspect;
-    top /= aspect;
-  }
-
-  mat4 projection = Frustum( left, right, bottom, top, zNear, zFar );
-  glUniformMatrix4fv( Projection, 1, GL_TRUE, projection );
-}
-
-//----------------------------------------------------------------------------
 
 void
 display( void )
 {
-  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  mat4 model_view = mat4(1.0);
-  model_view = model_view * Translate(translate_x,
-				      translate_y,
-				      translate_z);
-  model_view = model_view * RotateX(rotate_x);
-  model_view = model_view * RotateY(rotate_y);
-  model_view = model_view * RotateZ(rotate_z);
-  glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-  reshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+    mat4 rotation = mat4(1);
+    rotation = rotation * RotateX(rotate_x);
+    rotation = rotation * RotateY(rotate_y);
+    rotation = rotation * RotateZ(rotate_z);
 
-  glDrawArrays( GL_LINES, 0, NumAxesPoints );
-  glDrawArrays( GL_POINTS, NumAxesPoints, NumControlVertices );
-  glDrawArrays( GL_TRIANGLES, NumAxesPoints + NumControlVertices, NumVertices );
-  glFlush();
-  glutSwapBuffers();
-}
+    point4 at( 0.0, 0.0, 0.0, 1.0 );
+    point4 eye( 0.0, 0.0, 2.0, 1.0 );
+    vec4   up( 0.0, 1.0, 0.0, 0.0 );
 
-void
-alter_sampling(int delta) {
-  NumTimesToSubdivide += delta;
-  if (NumTimesToSubdivide == 0) {
-    NumTimesToSubdivide = 1;
-  }
-  init();
-  glutPostWindowRedisplay(mainWindow);
+    // Initialize shader lighting parameters
+    point4 light_position( 0.0, 0.0, 2.0, 0.0 );
+
+    glUniform4fv( glGetUniformLocation(program, "LightPosition"),
+		  1, light_position );
+
+    set_material(BRASS);
+    mat4 model_view = LookAt( eye, at, up );
+    model_view = model_view * rotation;
+    model_view = model_view * Translate(0,1,0);
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, model_view );
+    glDrawArrays( GL_TRIANGLES, 0, NumVertices );
+
+    set_material(RED_PLASTIC);
+    model_view = LookAt( eye, at, up );
+    model_view = model_view * rotation;
+    model_view = model_view * Translate(-1,-1,0);
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, model_view );
+    glDrawArrays( GL_TRIANGLES, 0, NumVertices );
+
+    set_material(GREEN_RUBBER);
+    model_view = LookAt( eye, at, up );
+    model_view = model_view * rotation;
+    model_view = model_view * Translate(1,-1,0);
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, model_view );
+    glDrawArrays( GL_TRIANGLES, 0, NumVertices );
+
+    glutSwapBuffers();
 }
 
 //----------------------------------------------------------------------------
@@ -397,206 +256,81 @@ alter_sampling(int delta) {
 void
 keyboard( unsigned char key, int x, int y )
 {
-  switch ( key ) {
-  case 'q':
-    translate_x -= translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'Q':
-    translate_x += translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'w':
-    translate_y -= translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'W':
-    translate_y += translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'e':
-    translate_z -= translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'E':
-    translate_z += translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'a':
-    rotate_x -= translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'A':
-    rotate_x += translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 's':
-    rotate_y -= translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'S':
-    rotate_y += translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'd':
-    rotate_z -= translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'D':
-    rotate_z += translate_dt;
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'X':
-    vertices[selected_control_vertex][X] += control_point_dt;
-    init();
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'x':
-    vertices[selected_control_vertex][X] -= control_point_dt;
-    init();
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'Y':
-    vertices[selected_control_vertex][Y] += control_point_dt;
-    init();
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'y':
-    vertices[selected_control_vertex][Y] -= control_point_dt;
-    init();
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'Z':
-    vertices[selected_control_vertex][Z] += control_point_dt;
-    init();
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'z':
-    vertices[selected_control_vertex][Z] -= control_point_dt;
-    init();
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'V':
-    selected_control_vertex++;
-    if (selected_control_vertex > NumControlVertices)
-      {selected_control_vertex = NumControlVertices;}
-    init();
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case 'v':
-    selected_control_vertex--;
-    if (selected_control_vertex < 0)
-      {selected_control_vertex = 0;}
-    init();
-    glutPostWindowRedisplay(mainWindow);
-    break;
-  case '+':
-    alter_sampling(1);
-    break;
-  case '-':
-    alter_sampling(-1);
-    break;
-  }
-}
-
-void
-myidle ( void )
-{
-  t += dt;
-  glutPostWindowRedisplay(mainWindow);
+    switch( key ) {
+    case 'a':
+      rotate_x -= rotate_dt;
+      glutPostWindowRedisplay(mainWindow);
+      break;
+    case 'A':
+      rotate_x += rotate_dt;
+      glutPostWindowRedisplay(mainWindow);
+      break;
+    case 's':
+      rotate_y -= rotate_dt;
+      glutPostWindowRedisplay(mainWindow);
+      break;
+    case 'S':
+      rotate_y += rotate_dt;
+      glutPostWindowRedisplay(mainWindow);
+      break;
+    case 'd':
+      rotate_z -= rotate_dt;
+      glutPostWindowRedisplay(mainWindow);
+      break;
+    case 'D':
+      rotate_z += rotate_dt;
+      glutPostWindowRedisplay(mainWindow);
+      break;
+    }
 }
 
 //----------------------------------------------------------------------------
 
 void
-read_patchfile(const char *file_path)
+reshape( int width, int height )
 {
-  FILE * file;
+    glViewport( 0, 0, width, height );
 
-  int i = 0;
-  file = fopen (file_path,"r");
-  if (NULL != file) {
-    char line[1000];
-    while (fgets ( line, sizeof line, file ) != NULL) {
-      double first;
-      double second;
-      double third;
-      sscanf(line, "%lf %lf %lf\n", &first, &second, &third);
-      vertices[i][X] = first;
-      vertices[i][Y] = second;
-      vertices[i][Z] = third;
-      i++;
+    GLfloat left = -2.0, right = 2.0;
+    GLfloat top = 2.0, bottom = -2.0;
+    GLfloat zNear = -20.0, zFar = 20.0;
+
+    GLfloat aspect = GLfloat(width)/height;
+
+    if ( aspect > 1.0 ) {
+	left *= aspect;
+	right *= aspect;
     }
-    fclose (file);
-  }
+    else {
+	top /= aspect;
+	bottom /= aspect;
+    }
+
+    mat4 projection = Ortho( left, right, bottom, top, zNear, zFar );
+    glUniformMatrix4fv( Projection, 1, GL_TRUE, projection );
 }
 
-void
-processMenuEvents(int menuChoice)
-{
-  switch (menuChoice) {
-  case FLAT_SHADING: FlatShading = true; init(); glutPostWindowRedisplay(mainWindow); break;
-  case SMOOTH_SHADING: FlatShading = false; init(); glutPostWindowRedisplay(mainWindow); break;
-  }
-}
-
-void
-setupMenu ( void )
-{
-  glutCreateMenu(processMenuEvents);
-  glutAddMenuEntry("Flat Shading",    FLAT_SHADING);
-  glutAddMenuEntry("Smooth Shading",  SMOOTH_SHADING);
-  glutAttachMenu(GLUT_RIGHT_BUTTON);
-}
-
-void printHelp ( void )
-{
-  printf("%s\n", TITLE);
-  printf("Use right-click menu to change shading.\n");
-  printf("Keyboard options:\n");
-  printf("%c/%c - translate model in x direction\n", 'q', 'Q');
-  printf("%c/%c - translate model in y direction\n", 'w', 'W');
-  printf("%c/%c - translate model in z direction\n", 'e', 'E');
-  printf("%c/%c - rotate around the x axes\n", 'a', 'A');
-  printf("%c/%c - rotate around the y axes\n", 's', 'S');
-  printf("%c/%c - rotate around the z axes\n", 'd', 'D');
-  printf("%c/%c - move control vertex in the x direction\n", 'x', 'X');
-  printf("%c/%c - move control vertex in the y direction\n", 'y', 'Y');
-  printf("%c/%c - move control vertex in the z direction\n", 'z', 'Z');
-  printf("%c/%c - change selected control vertex\n", 'v', 'V');
-  printf("%c/%c - increase/decrease sample size\n", '+', '-');
-}
+//----------------------------------------------------------------------------
 
 int
-main( int argc, char *argv[] )
+main( int argc, char **argv )
 {
-  glutInit( &argc, argv );
-  glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
-  glutInitWindowSize( 512, 512 );
-  mainWindow = glutCreateWindow( TITLE );
 
-  glewExperimental=GL_TRUE;
-  glewInit();
+    glutInit( &argc, argv );
+    glutInitDisplayMode( GLUT_RGBA | GLUT_DEPTH );
+    glutInitWindowSize( 512, 512 );
+    mainWindow = glutCreateWindow( "Sphere" );
 
-  if (argc > 1) {
-    read_patchfile(argv[1]);
-  } else {
-    read_patchfile("models/patchPoints.txt");
-  }
-  init();
+    glewExperimental=GL_TRUE;
+    glewInit();
 
-  setupMenu();
+    program = InitShader( "vshader56.glsl", "fshader56.glsl" );
+    init();
 
-  glutIdleFunc( myidle );
-  glutDisplayFunc( display );
-  glutReshapeFunc( reshape );
-  glutKeyboardFunc( keyboard );
+    glutDisplayFunc( display );
+    glutReshapeFunc( reshape );
+    glutKeyboardFunc( keyboard );
 
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_PROGRAM_POINT_SIZE);
-
-  printHelp();
-
-  glutMainLoop();
-  return 0;
+    glutMainLoop();
+    return 0;
 }
