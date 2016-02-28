@@ -7,6 +7,7 @@ uniform vec4 AmbientProduct, DiffuseProduct, SpecularProduct;
 uniform mat4 ModelView;
 uniform vec4 LightPosition;
 uniform float Shininess;
+uniform vec4 FrameBufferColor;
 
 void main() 
 { 
@@ -30,7 +31,13 @@ void main()
 	specular = vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-    gl_FragColor = ambient + diffuse + specular;
-    gl_FragColor.a = 1.0;
+    if (FrameBufferColor.x != 0.0 ||
+	FrameBufferColor.y != 0.0 ||
+	FrameBufferColor.z != 0.0) {
+      gl_FragColor = FrameBufferColor;
+    } else {
+      gl_FragColor = ambient + diffuse + specular;
+      gl_FragColor.a = 1.0;
+    }
 } 
 
