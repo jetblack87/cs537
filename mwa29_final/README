@@ -1,0 +1,10 @@
+Class: CS537
+Student: Mark Albrecht (mwa29)
+
+How to compile and run:
+   The Makefile contains the following three targets:
+      - clean: deletes all output files.
+      - build (default): compiles the software
+      - run: launches the application.
+
+   To compile and run, execute 'make run'.
