@@ -1,0 +1,20 @@
+Class: CS537
+Student: Mark Albrecht (mwa29)
+
+How to compile and run:
+   The Makefile contains the following three targets:
+      - clean: deletes all output files.
+      - build (default): compiles the software
+      - run: launches the application.
+
+   To compile and run, execute 'make run'.
+
+   To run using an alternative patch file, build it and then run like this:
+      ./shapes <path to file>
+   e.g. ./shapes models/patchPoints.txt
+
+There are currently some issues with the application:
+1. The control point size is small. I had tried various things to
+   make them bigger with no luck.
+2. Because the control points are small - the coloring of the selected point
+   is hard to see.
