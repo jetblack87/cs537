@@ -216,15 +216,10 @@ init( void )
     divide_patch( patch, NumTimesToSubdivide );
   }
 
-  calculate_normals();
-
   for (int i = 0; i < NumAxesPoints; i++) {
+    normals.push_back(vec3(1.0));
     tex_coords.push_back(vec2(axes_points[i].x, axes_points[i].y));
   }
-  for (uint i = 0; i < points.size(); i++) {
-    tex_coords.push_back(vec2(points.at(i).x, points.at(i).y));
-  }
-
   // Need vertices of size of vec4
   point4 control_points[NumControlVertices];
   for (int i = 0; i < NumControlVertices; i++) {
@@ -235,7 +230,12 @@ init( void )
     control_points[i] = vec4(vertices[i][X],
 			     vertices[i][Y],
 			     vertices[i][Z], w);
+    normals.push_back(vec3(1.0));
     tex_coords.push_back(vec2(vertices[i][X], vertices[i][Y]));
+  }
+  calculate_normals();
+  for (uint i = 0; i < points.size(); i++) {
+    tex_coords.push_back(vec2(points.at(i).x, points.at(i).y));
   }
 
   // Create a checkerboard pattern
@@ -266,6 +266,8 @@ init( void )
   GLuint vao[1];
   glGenVertexArrays( 1, vao );
   glBindVertexArray( vao[0] );
+
+  printf("%u, %u, %u\n", NumAxesPoints+NumControlVertices+(uint)points.size(), (uint)normals.size(),(uint)tex_coords.size());
 
   // Create and initialize a buffer object
   GLuint buffer;
@@ -636,6 +638,7 @@ main( int argc, char *argv[] )
   glutKeyboardFunc( keyboard );
 
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_TEXTURE_CUBE_MAP); // Assignment 9
   glEnable(GL_PROGRAM_POINT_SIZE);
 
   printHelp();
