@@ -121,7 +121,6 @@ std::vector<vec3>   points;
 std::vector<vec4>   vertices;
 std::vector<vec4>   normals;
 std::vector<vec3>   faces;
-std::vector<color4> colors;
 
 std::string smf_path("models/lo-sphere.smf");
 
@@ -317,10 +316,6 @@ read_smf ( void )
 	printf("\n");
       }
     }
-    printf("[DEBUG] printing colors.\n");
-    for(uint i = 0; i < colors.size(); i++) {
-      printf("[DEBUG] %f, %f, %f\n", colors.at(i).x, colors.at(i).y, colors.at(i).z);
-    }
   }
 }
 
@@ -338,7 +333,6 @@ init( void )
   glBindBuffer( GL_ARRAY_BUFFER, buffer );
   glBufferData( GL_ARRAY_BUFFER,
 		(vertices.size()*sizeof(vec4))
-		+ (colors.size()*sizeof(color4))
 		+ (normals.size()*sizeof(vec4)),
 		NULL, GL_STATIC_DRAW );
 
@@ -347,10 +341,6 @@ init( void )
 		  vertices.size()*sizeof(vec4),
 		  &vertices[0]);
   glBufferSubData(GL_ARRAY_BUFFER, vertices.size()*sizeof(vec4),
-		  colors.size()*sizeof(color4),
-		  &colors[0]);
-  glBufferSubData(GL_ARRAY_BUFFER, vertices.size()*sizeof(vec4)
-		  + colors.size()*sizeof(color4),
 		  normals.size()*sizeof(vec4),
 		  &normals[0]);
 
