@@ -14,6 +14,12 @@ typedef vec4 point4;
 //----   CONSTANTS    ------------------------------------------------------
 //--------------------------------------------------------------------------
 
+vec3 BrickColor(0.5, 0.0, 0.0);
+vec3 MortarColor(0.25, 0.25, 0.25);
+vec2 BrickSize(0.25, 0.125);
+vec3 BrickPct(0.80, 0.80);
+
+
 const char *TITLE = "mwa29 - CS537 assignment 6";
 
 const int  DEBUG_MAX_FACES = 1500;
@@ -117,12 +123,12 @@ std::vector<vec4>   normals;
 std::vector<vec3>   faces;
 std::vector<color4> colors;
 
-std::string smf_path("models/cube.smf");
+std::string smf_path("models/lo-sphere.smf");
 
 double bounding_box[BOUNDING_BOX_SIZE] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
 int current_projection = PARALLEL_PROJECTION;
-int current_shading    = GOURAUD_SHADING;
+int current_shading    = PHONG_SHADING;
 
 // Initialize shader lighting parameters
 point4 light0_position( 0.0, 0.0, -1.0, 0.0 );
@@ -215,6 +221,8 @@ get_normals(std::vector<vec3> points, std::vector<vec3> faces)
 
     vec3 normal = normalize( cross(u, v) );
 
+    normals.push_back(normal);
+    normals.push_back(normal);
     normals.push_back(normal);
   }
   return normals;
@@ -350,9 +358,9 @@ init( void )
   //  GLuint program = InitShader( "vshdrcube.glsl", "fshdrcube.glsl" );
   GLuint program;
   if (current_shading == GOURAUD_SHADING) {
-    program = InitShader( "vshader53.glsl", "fshader53.glsl" );
+    program = InitShader( "vshader53_a6.glsl", "fshader53_a6.glsl" );
   } else {
-    program = InitShader( "vshader56.glsl", "fshader56.glsl" );
+    program = InitShader( "vshader56_a6.glsl", "fshader56_a6.glsl" );
   }
   glUseProgram( program );
 
@@ -400,6 +408,17 @@ init( void )
 
   glUniform1f( glGetUniformLocation(program, "Shininess"),
 	       material_shininess );
+
+  // Assignment 9
+  glUniform3fv( glGetUniformLocation(program, "BrickColor"),
+		1,  BrickColor);
+  glUniform3fv( glGetUniformLocation(program, "MortarColor"),
+		1,  MortarColor);
+  glUniform2fv( glGetUniformLocation(program, "BrickSize"),
+		1,  BrickSize);
+  glUniform2fv( glGetUniformLocation(program, "BrickPct"),
+		1,  BrickPct);
+
 		 
   // Retrieve transformation uniform variable locations
   ModelView_loc = glGetUniformLocation( program, "ModelView" );
