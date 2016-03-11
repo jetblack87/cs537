@@ -6,22 +6,16 @@ varying  vec3 fN;
 varying  vec3 fE;
 varying  vec3 fL0;
 varying  vec3 fL1;
+varying  vec4 vPosition_world; //assignment 9
 
 uniform mat4 ModelView;
 uniform vec4 Light0Position;
 uniform vec4 Light1Position;
 uniform mat4 Projection;
 
-attribute vec3 texcoord;
-varying vec3 st;
-varying vec3 MCposition;
-
 void main()
 {
-    // Assignment 9
-    MCposition = vec2(vPosition.x, vPosition.y, vPosition.y);
-    st = texcoord;
-
+    vPosition_world = vPosition; // assignment 9
     fN = vNormal;
     fE = vPosition.xyz;
     fL0 = (ModelView*Light0Position).xyz;

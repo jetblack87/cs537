@@ -3,6 +3,10 @@ GCC_OPTIONS=-Wall -Wno-unused-function -pedantic -I include
 GL_OPTIONS=-lGLEW -lGL -lglut
 OPTIONS=$(GCC_OPTIONS) $(GL_OPTIONS)
 
+run_all:
+	@make APP=shapes_a7 clean run
+	@make APP=shapes_a6 clean run	
+
 build: $(APP)
 
 clean:
@@ -10,9 +14,6 @@ clean:
 
 run: build
 	@./$(APP)
-
-run_all: build
-	for x in `ls ./models/`; do ./$(APP) ./models/$$x; done
 
 $(APP): 
 	@g++ $@.cpp Common/InitShader.o $(OPTIONS) -o $@
