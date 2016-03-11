@@ -6,6 +6,11 @@
 #include <string>
 #include <vector>
 
+#define N 256
+GLuint textures[1];
+GLfloat texture[N][N][N][3];
+GLuint program;
+
 typedef vec3 color3;
 typedef vec4 color4;
 typedef vec4 point4;
@@ -121,6 +126,7 @@ std::vector<vec3>   points;
 std::vector<vec4>   vertices;
 std::vector<vec4>   normals;
 std::vector<vec3>   faces;
+std::vector<vec3>   tex_coords;
 
 std::string smf_path("models/lo-sphere.smf");
 
@@ -300,6 +306,12 @@ read_smf ( void )
 
   calculate_bounding_box(points);
 
+  for (uint i = 0; i < vertices.size(); i++) {
+    tex_coords.push_back(vec3(vertices.at(i).x,
+    			      vertices.at(i).y,
+    			      vertices.at(i).z));
+  }
+
   if (debug) {
     printf("[DEBUG] printing points.\n");
     for(uint i = 0; i < points.size(); i++) {
@@ -322,6 +334,17 @@ read_smf ( void )
 void
 init( void )
 {
+  glGenTextures( 1, textures );
+  glBindTexture(GL_TEXTURE_3D, textures[0]);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameterf( GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+  glTexParameterf( GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+  glTexParameterf( GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT );
+  glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, N, N, N, 0, GL_RGB, GL_FLOAT, texture);
+  glActiveTexture( GL_TEXTURE0 );
+  glBindTexture(GL_TEXTURE_3D, textures[0]);
+
   // Create a vertex array object
   GLuint vao[1];
   glGenVertexArrays( 1, vao );
@@ -333,20 +356,29 @@ init( void )
   glBindBuffer( GL_ARRAY_BUFFER, buffer );
   glBufferData( GL_ARRAY_BUFFER,
 		(vertices.size()*sizeof(vec4))
-		+ (normals.size()*sizeof(vec4)),
+		+ (normals.size()*sizeof(vec4))
+		+ (tex_coords.size()*sizeof(vec3)),
 		NULL, GL_STATIC_DRAW );
 
   //load data separately
-  glBufferSubData(GL_ARRAY_BUFFER, 0,
+  GLintptr offset = 0;
+  glBufferSubData(GL_ARRAY_BUFFER, offset,
 		  vertices.size()*sizeof(vec4),
 		  &vertices[0]);
-  glBufferSubData(GL_ARRAY_BUFFER, vertices.size()*sizeof(vec4),
+  offset += vertices.size()*sizeof(vec4);
+
+  glBufferSubData(GL_ARRAY_BUFFER, offset,
 		  normals.size()*sizeof(vec4),
 		  &normals[0]);
+  offset += normals.size()*sizeof(vec4);
+
+  glBufferSubData( GL_ARRAY_BUFFER,
+		   offset,
+		   (tex_coords.size()*sizeof(vec3)),
+		   &tex_coords[0] );
+  offset += (tex_coords.size()*sizeof(vec3));
 
   // Load shaders and use the resulting shader program
-  //  GLuint program = InitShader( "vshdrcube.glsl", "fshdrcube.glsl" );
-  GLuint program;
   if (current_shading == GOURAUD_SHADING) {
     program = InitShader( "vshader53_a6.glsl", "fshader53_a6.glsl" );
   } else {
@@ -355,19 +387,24 @@ init( void )
   glUseProgram( program );
 
   // Initialize the vertex position attribute from the vertex shader
+  offset = 0;
   GLuint vPosition_loc = glGetAttribLocation(program, "vPosition");
   glEnableVertexAttribArray(vPosition_loc);
   glVertexAttribPointer(vPosition_loc, 4, GL_FLOAT, GL_FALSE, 0,
-			BUFFER_OFFSET(0));
-  GLuint vColor_loc = glGetAttribLocation(program, "vColor");
-  glEnableVertexAttribArray(vColor_loc);
-  glVertexAttribPointer(vColor_loc, 4, GL_FLOAT, GL_FALSE, 0,
-			BUFFER_OFFSET(vertices.size()*sizeof(vec4)));
+			BUFFER_OFFSET(offset));
+  offset += (vertices.size()*sizeof(vec4));
+
   GLuint vNormal_loc = glGetAttribLocation(program, "vNormal");
   glEnableVertexAttribArray(vNormal_loc);
   glVertexAttribPointer(vNormal_loc, 4, GL_FLOAT, GL_FALSE, 0,
-			BUFFER_OFFSET(normals.size()*sizeof(vec4)));
+			BUFFER_OFFSET(offset));
+  offset += (normals.size()*sizeof(vec4));
 
+  GLuint vTexCoord_loc = glGetAttribLocation(program, "texcoord");
+  glEnableVertexAttribArray(vNormal_loc);
+  glVertexAttribPointer(vTexCoord_loc, 3, GL_FLOAT, GL_FALSE, 0,
+			BUFFER_OFFSET(offset));
+  offset += (tex_coords.size()*sizeof(vec3));
 
   glUniform4fv( glGetUniformLocation(program, "MaterialAmbient"),
 		1,  material_ambient);
@@ -408,13 +445,11 @@ init( void )
 		1,  BrickSize);
   glUniform2fv( glGetUniformLocation(program, "BrickPct"),
 		1,  BrickPct);
-
+  glUniform1i( glGetUniformLocation(program, "texture"), textures[0] );
 		 
   // Retrieve transformation uniform variable locations
   ModelView_loc = glGetUniformLocation( program, "ModelView" );
   Projection_loc = glGetUniformLocation( program, "Projection" );
-
-  glEnable( GL_DEPTH_TEST );
 
   glShadeModel(GL_FLAT);
 
@@ -680,6 +715,28 @@ main( int argc, char **argv )
     printf("[DEBUG] Filepath: %s\n", smf_path.c_str());
   }
 
+  for(int i=0;i<N;i++) for(int j=0;j<N;j++) for(int k=0;k<N;k++) {
+  	texture[i][j][k][0] = 1.0;
+  	texture[i][j][k][1] = 1.0;
+  	texture[i][j][k][2] = 1.0;
+  }
+
+  // Create a checkerboard pattern
+  // for ( int i = 0; i < N; i++ ) {
+  //   for ( int j = 0; j < N; j++) {
+  //     GLubyte c = (((i & 0x8) == 0) ^ ((j & 0x8)  == 0)) * 255;
+  //     texture[i][j][0][0]  = c;
+  //     texture[i][j][0][1]  = c;
+  //     texture[i][j][0][2]  = c;
+
+  //     for ( int k = 1; k < N; k++ ) {
+  // 	texture[i][j][k][0] = texture[i][j][0][0];
+  // 	texture[i][j][k][1] = texture[i][j][0][1];
+  // 	texture[i][j][k][2] = texture[i][j][0][2];
+  //     }
+  //   }
+  // }
+
   printHelp();
 
   glutInit( &argc, argv );
@@ -699,6 +756,7 @@ main( int argc, char **argv )
   glutKeyboardFunc( keyboard );
   glutIdleFunc    ( myidle );
 
+  glEnable(GL_TEXTURE_3D);
   glEnable(GL_DEPTH_TEST);
   glutMainLoop();
   return 0;

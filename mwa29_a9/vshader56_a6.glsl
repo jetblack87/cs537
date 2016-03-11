@@ -12,19 +12,15 @@ uniform vec4 Light0Position;
 uniform vec4 Light1Position;
 uniform mat4 Projection;
 
-varying vec3 color;
-uniform vec3  BrickColor, MortarColor; 
-uniform vec2  BrickSize,  BrickPct;
-//varying vec2  MCposition; 
+attribute vec3 texcoord;
+varying vec3 st;
+varying vec3 MCposition;
 
 void main()
 {
-    vec2  position, useBrick;         
-    position = vec2(vPosition.x, vPosition.y) / BrickSize;     
-    if (fract(position.y * 0.5) > 0.5)    position.x += 0.5;     
-    position = fract(position);     
-    useBrick = step(position, BrickPct);     
-    color  = mix(MortarColor, BrickColor, useBrick.x * useBrick.y);
+    // Assignment 9
+    MCposition = vec2(vPosition.x, vPosition.y, vPosition.y);
+    st = texcoord;
 
     fN = vNormal;
     fE = vPosition.xyz;
