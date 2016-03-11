@@ -267,8 +267,6 @@ init( void )
   glGenVertexArrays( 1, vao );
   glBindVertexArray( vao[0] );
 
-  printf("%u, %u, %u\n", NumAxesPoints+NumControlVertices+(uint)points.size(), (uint)normals.size(),(uint)tex_coords.size());
-
   // Create and initialize a buffer object
   GLuint buffer;
   glGenBuffers( 1, &buffer );

@@ -19,11 +19,13 @@ uniform vec4 Light1Diffuse;
 uniform vec4 Light1Specular;
 uniform float Shininess;
 
-varying vec3 color;
+varying vec3  MCposition; 
+
+uniform sampler3D texture;
+varying vec3 st;
 
 void main() 
 { 
-
     // Normalize the input lighting vectors
     vec3 N = normalize(fN);
     vec3 E = normalize(fE);
@@ -78,7 +80,7 @@ void main()
     }
     // End Light1
     gl_FragColor = ambient + diffuse + specular;
+    gl_FragColor = gl_FragColor * texture3D(texture, st);
     gl_FragColor.a = 1.0;
-    gl_FragColor = gl_FragColor * vec4(color,1.0);
-    //    gl_FragColor = vec4(color, 1.0);
+    //gl_FragColor = gl_FragColor * vec4(color,1.0);
 } 
